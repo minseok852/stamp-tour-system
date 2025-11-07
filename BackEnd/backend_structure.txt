@@ -1,0 +1,34 @@
+backend/
+├── app/
+│   ├── api/                 # API 엔드포인트(Router) 모음
+│   │   └── v1/              # API 버전 관리
+│   │       ├── endpoints/
+│   │       │   ├── auth.py      # 로그인/인증 (관리자, 사용자)
+│   │       │   ├── users.py     # 사용자 정보 관리
+│   │       │   ├── stamps.py    # 스탬프 찍기(QR 스캔), 내 스탬프 조회 [cite: 11, 26]
+│   │       │   ├── booths.py    # 부스 정보, 혼잡도, 위치 정보 조회 [cite: 38, 53]
+│   │       │   └── admin.py     # 관리자용 대시보드 데이터, QR 관리 [cite: 61, 68]
+│   │       └── api.py       # 라우터 통합 파일
+│   ├── core/                # 핵심 설정
+│   │   ├── config.py        # 환경변수(DB URL, Secret Key 등) 설정
+│   │   └── security.py      # JWT 토큰 생성/검증, 비밀번호 해싱
+│   ├── db/                  # 데이터베이스 관련
+│   │   ├── session.py       # DB 세션 연결 설정 (SQLAlchemy)
+│   │   └── base.py          # 모든 모델을 import하는 파일 (Alembic용)
+│   ├── models/              # DB 테이블 정의 (SQLAlchemy ORM 모델)
+│   │   ├── user.py          # 사용자(학생), 관리자 모델
+│   │   ├── booth.py         # 부스 정보 모델
+│   │   └── stamp.py         # 스탬프 획득 기록 모델
+│   ├── schemas/             # 데이터 검증 및 직렬화 (Pydantic 스키마)
+│   │   ├── user.py          # 로그인/회원가입 요청/응답 스키마
+│   │   ├── stamp.py         # 스탬프 응답 스키마
+│   │   └── booth.py         # 부스 혼잡도/위치 응답 스키마
+│   ├── services/            # 복잡한 비즈니스 로직 분리
+│   │   ├── gps_service.py   # 위치 기반 부정행위 검증 로직 (5m 이내 계산) [cite: 12, 22]
+│   │   └── stats_service.py # 대시보드용 통계 데이터 집계 로직 [cite: 68]
+│   └── main.py              # FastAPI 앱 실행 진입점 (CORS 설정 포함)
+├── alembic/                 # DB 마이그레이션 관리 (선택사항이지만 추천)
+├── tests/                   # 테스트 코드
+├── .env                     # 환경변수 파일 (절대 깃허브에 올리면 안 됨)
+├── .gitignore               # 깃 무시 설정
+└── requirements.txt         # 의존성 패키지 목록
