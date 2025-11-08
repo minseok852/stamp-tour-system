@@ -1,1 +1,369 @@
 //Home.jsx 메인 홈 화면
+import React from 'react';
+import '../../styles/Home.css'; 
+import frontImage from '../../assets/images/앞화면.png'; //사진을 넣기 위해 import 작업했음.
+import { BrowserRouter } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom';
+const { useState, useRef } = React;
+ 
+        const Home = () => {
+            const navigate=useNavigate(); //훅 사용 설정
+            const [currentPage, setCurrentPage] = useState('home');
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [user, setUser] = useState(null);
+            const [showLoginModal, setShowLoginModal] = useState(false);
+            const [showSuccessModal, setShowSuccessModal] = useState(false);
+            const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+            const [submitForm, setSubmitForm] = useState({ name: '', studentId: '' });
+
+            const stampSectionRef = useRef(null);
+
+            const [stamps, setStamps] = useState([
+                { id: 1, location: '교수회관', building: '국제교육팀(301호)', icon: '🏛️', collected: false, lat: 37.6313, lng: 127.2533 },
+                { id: 2, location: '대학원', building: '교직과(507호)', icon: '🎓', collected: false, lat: 37.6318, lng: 127.2538 },
+                { id: 3, location: '인문학관', building: '글쓰기센터(109호)', icon: '🏢', collected: false, lat: 37.6308, lng: 127.2528 },
+                { id: 4, location: '인문학관', building: '인성교육팀(101호)', icon: '📖', collected: false, lat: 37.6315, lng: 127.2542 },
+                { id: 5, location: '안문학관', building: '교양교육팀(101호)', icon: '🛡️', collected: false, lat: 37.6310, lng: 127.2525 },
+                { id: 6, location: '학생회관', building: '학생복지팀(319호)', icon: '🔬', collected: false, lat: 37.6320, lng: 127.2545 },
+                { id: 7, location: '학생회관', building: '장애학생지원센터(319호)', icon: '🏫', collected: false, lat: 37.6312, lng: 127.2535 },
+                { id: 8, location: '정보전산원', building: '취업팀(103호)', icon: '⚽', collected: false, lat: 37.6305, lng: 127.2530 },
+                { id: 9, location: '정보전산원', building: '학생생활상담센터(402호)', icon: '🏠', collected: false, lat: 37.6322, lng: 127.2548 },
+                { id: 10, location: '중앙도서관', building: '교수학습지원센터(1021호)', icon: '📚', collected: false, lat: 37.6316, lng: 127.2540 },
+                { id: 11, location: '중앙도서관', building: '학생성공팀(1021호)', icon: '🔢', collected: false, lat: 37.6307, lng: 127.2532 },
+                { id: 12, location: '중앙도서관', building: '원격교육지원센터(1021호)', icon: '✈️', collected: false, lat: 37.6311, lng: 127.2537 },
+                { id: 13, location: '중앙도서관', building: '학술정보팀(5층)', icon: '💡', collected: false, lat: 37.6314, lng: 127.2534 },
+                { id: 14, location: '공 나', building: '공학교육혁신센터(B8-107호)', icon: '💻', collected: false, lat: 37.6309, lng: 127.2544 },
+                { id: 15, location: '공 나', building: 'IT융합지식재산교육센터(B8-110호)', icon: '💻', collected: false, lat: 37.6309, lng: 127.2544 },
+            ]);
+
+            const collectedCount = stamps.filter(s => s.collected).length;
+            const progressPercentage = (collectedCount / stamps.length) * 100;
+
+            const scrollToStamps = () => {
+                stampSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            const handleStampClick = (id) => {
+                if (!isLoggedIn) {
+                    alert('로그인이 필요합니다!');
+                    setShowLoginModal(true);
+                    return;
+                }
+                setStamps(stamps.map(stamp => 
+                    stamp.id === id ? { ...stamp, collected: !stamp.collected } : stamp
+                ));
+            };
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                setUser({
+                    name: loginForm.username,
+                    studentId: '20221563',
+                    collectedStamps: collectedCount
+                });
+                setIsLoggedIn(true);
+                setShowLoginModal(false);
+                setLoginForm({ username: '', password: '' });
+            };
+
+            const handleLogout = () => {
+                setIsLoggedIn(false);
+                setUser(null);
+                setStamps(stamps.map(stamp => ({ ...stamp, collected: false })));
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (collectedCount < 15) {
+                    alert(`15개의 스탬프를 모두 모아야 제출할 수 있습니다! (현재 ${collectedCount}/14)`);
+                    return;
+                }
+                setShowSuccessModal(true);
+            };
+
+            const closeSuccessModal = () => {
+                setShowSuccessModal(false);
+                setStamps(stamps.map(stamp => ({ ...stamp, collected: false })));
+                setSubmitForm({ name: '', studentId: '' });
+            };
+
+            return (
+                <>
+                    {/* Desktop Navigation */}
+                    <nav className="navbar">
+                        <div className="nav-logo" onClick={() => setCurrentPage('home')}>
+                            <span className="nav-logo-icon">🎓</span>
+                            <span>대진대 스탬프 투어</span>
+                        </div>
+                        <div className="nav-menu">
+                            <div 
+                                className={`nav-item ${currentPage === 'home' ? 'active' : ''}`}
+                                onClick={() => setCurrentPage('home')}
+                            >
+                                홈
+                            </div>
+                            <div 
+                                className={`nav-item ${currentPage === 'stamps' ? 'active' : ''}`}
+                                onClick={() => setCurrentPage('stamps')}
+                            >
+                                스탬프 현황
+                            </div>
+                        </div>
+                        <div className="nav-user">
+                            {isLoggedIn ? (
+                                <>
+                                    <div className="user-info">
+                                        <div className="user-name">{user?.name}</div>
+                                        <div className="user-stamps">
+                                            🏆 {collectedCount}/{stamps.length} 스탬프
+                                        </div>
+                                    </div>
+                                    <div className="user-avatar" onClick={handleLogout}>
+                                        {user?.name?.charAt(0)}
+                                    </div>
+                                </>
+                            ) : (
+                                <button className="login-button" onClick={() => setShowLoginModal(true)}>
+                                    로그인
+                                </button>
+                            )}
+                        </div>
+                    </nav>
+
+                    {/* Mobile Bottom Navigation */}
+                    <nav className="bottom-nav">
+                        <div 
+                            className={`bottom-nav-item ${currentPage === 'home' ? 'active' : ''}`}
+                            onClick={() => setCurrentPage('home')}
+                        >
+                            <div className="bottom-nav-icon">🏠</div>
+                            <div className="bottom-nav-label">홈</div>
+                        </div>
+                        <div 
+                            className={`bottom-nav-item ${currentPage === 'stamps' ? 'active' : ''}`}
+                            onClick={() => setCurrentPage('stamps')}
+                        >
+                            <div className="bottom-nav-icon">🎫</div>
+                            <div className="bottom-nav-label">스탬프</div>
+                        </div>
+                        <div 
+                            className={`bottom-nav-item ${currentPage === 'scan' ? 'active' : ''}`}
+                            onClick={() => alert('QR 스캔 기능은 모바일 앱에서 사용 가능합니다!')}
+                        >
+                            <div className="bottom-nav-icon">📷</div>
+                            <div className="bottom-nav-label">QR스캔</div>
+                        </div>
+                        <div 
+                            className={`bottom-nav-item ${currentPage === 'profile' ? 'active' : ''}`}
+                            onClick={() => isLoggedIn ? setCurrentPage('profile') : setShowLoginModal(true)}
+                        >
+                            <div className="bottom-nav-icon">👤</div>
+                            <div className="bottom-nav-label">내정보</div>
+                        </div>
+                    </nav>
+
+                    {/* Hero Section */}
+                    {currentPage === 'home' && (
+                        <section className="hero-section">
+                            <div className="deco-circle"></div>
+                            <div className="deco-circle"></div>
+                            <div className="deco-circle"></div>
+                            <div className="deco-circle"></div>
+                            
+                            <div className="hero-content">
+                                <div className="hero-title-section">
+                                    <div className="hero-logo">
+                                        <div className="hero-logo-text">대진대</div>
+                                    </div>
+                                    <h1 className="hero-main-title">대진대 QR 스탬프 랠리</h1>
+                                    <p className="hero-subtitle">캠퍼스 투어 참여 안내</p>
+                                </div>
+                                
+                                <div className="hero-image-container">
+                                    <img src={frontImage} alt="앞화면" className="hero-image" />
+                                </div>
+                            </div>
+                            
+                            <div className="scroll-indicator" onClick={scrollToStamps}>
+                                <span>스탬프 장소 안내</span>
+                                <div className="scroll-arrow"></div>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Stamp Section */}
+                    {(currentPage === 'home' || currentPage === 'stamps') && (
+                        <section className="stamp-section" ref={stampSectionRef}>
+                            <div className="stamp-container">
+                                <div className="stamp-header">
+                                    <div className="stamp-header-bg">
+                                        <h2 className="stamp-title">🎫 스탬프 장소 안내</h2>
+                                        <p className="stamp-subtitle">
+                                            대진대 캠퍼스를 탐험하며 14개의 스탬프를 모두 모아보세요!
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div className="progress-section">
+                                    <div className="progress-bar-container">
+                                        <div 
+                                            className="progress-bar-fill" 
+                                            style={{ width: `${progressPercentage}%` }}
+                                        >
+                                            {collectedCount > 0 && `${Math.round(progressPercentage)}%`}
+                                        </div>
+                                    </div>
+                                    <div className="progress-text">
+                                        획득한 스탬프: <span className="progress-count">{collectedCount}/{stamps.length}</span>
+                                    </div>
+                                </div>
+
+                                {/* Stamp Grid */}
+                                <div className="stamp-grid">
+                                    {stamps.map(stamp => (
+                                        <div 
+                                            key={stamp.id}
+                                            className={`stamp-card ${stamp.collected ? 'collected' : ''}`}
+                                            onClick={() => handleStampClick(stamp.id)}
+                                        >
+                                            <div className="stamp-icon-wrapper">
+                                                <div className="stamp-circle">
+                                                    <div className="stamp-icon">{stamp.icon}</div>
+                                                    <div className="stamp-logo-text">DAEJIN<br/>UNIVERSITY</div>
+                                                </div>
+                                            </div>
+                                            <div className="stamp-location">{stamp.location}</div>
+                                            <div className="stamp-building">{stamp.building}</div>
+                                            <div className="stamp-check-badge">✓</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Submit Form */}
+                                {isLoggedIn && (
+                                    <div className="submit-form-section">
+                                        <form className="submit-form" onSubmit={handleSubmit}>
+                                            <div className="form-group">
+                                                <label className="form-label">이름</label>
+                                                <input 
+                                                    type="text"
+                                                    className="form-input"
+                                                    placeholder="이름을 입력하세요"
+                                                    value={submitForm.name}
+                                                    onChange={(e) => setSubmitForm({...submitForm, name: e.target.value})}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="form-group">
+                                                <label className="form-label">학번</label>
+                                                <input 
+                                                    type="text"
+                                                    className="form-input"
+                                                    placeholder="학번을 입력하세요"
+                                                    value={submitForm.studentId}
+                                                    onChange={(e) => setSubmitForm({...submitForm, studentId: e.target.value})}
+                                                    required
+                                                />
+                                            </div>
+                                            <button 
+                                                type="submit"
+                                                className="submit-button"
+                                                disabled={collectedCount < 14 || !submitForm.name || !submitForm.studentId}
+                                            >
+                                                {collectedCount < 14 
+                                                    ? `스탬프를 더 모아주세요 (${collectedCount}/14)` 
+                                                    : '완주 인증 제출하기 🎉'}
+                                            </button>
+                                        </form>
+                                    </div>
+                                )}
+
+                                {!isLoggedIn && (
+                                    <div style={{ textAlign: 'center' }}>
+                                        <button 
+                                            className="login-button" 
+                                            onClick={() => setShowLoginModal(true)}
+                                            style={{ padding: '18px 50px', fontSize: '1.2rem' }}
+                                        >
+                                            로그인하고 스탬프 모으기
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* 로그인 */}
+                    {showLoginModal && (
+                        <div className="modal-overlay" onClick={() => setShowLoginModal(false)}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-icon">🎓</div>
+                                <h2 className="modal-title">로그인</h2>
+                                <form className="login-form" onSubmit={handleLogin}>
+                                    <input 
+                                        type="text"
+                                        className="form-input"
+                                        placeholder="학번"
+                                        value={loginForm.username}
+                                        onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
+                                        required
+                                    />
+                                    <input 
+                                        type="password"
+                                        className="form-input"
+                                        placeholder="비밀번호"
+                                        value={loginForm.password}
+                                        onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                                        required
+                                    />
+                                    <button type="submit" className="modal-button">
+                                        로그인
+                                    </button>
+                                    <div className="login-actions">
+                                    <button
+                                        type="button"
+                                        className="login-action-link"
+                                        onClick={() => {
+                                            setShowLoginModal(false);
+                                            navigate('/signup'); // 회원가입 페이지로 이동 
+                                            
+                                        }}
+                                    >
+                                        회원가입
+                                    </button>
+                                    <span className="divider">|</span>
+                                    <button
+                                        className="login-action-link"
+                                        onClick={() => alert('비밀번호 찾기 기능은 준비 중입니다.')}
+                                    >
+                                        비밀번호 찾기
+                                    </button>
+                                </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Success Modal */}
+                    {showSuccessModal && (
+                        <div className="modal-overlay" onClick={closeSuccessModal}>
+                            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                                <div className="modal-icon">🎊</div>
+                                <h2 className="modal-title">완주 축하합니다!</h2>
+                                <p className="modal-text">
+                                    {submitForm.name}님!<br/>
+                                    14개의 스탬프를 모두 모으셨습니다!<br/>
+                                </p>
+                                <button className="modal-button" onClick={closeSuccessModal}>
+                                    확인
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            );
+        };
+
+export default Home;
+

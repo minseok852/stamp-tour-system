@@ -1,0 +1,458 @@
+/* Signup Modal Styles */
+:root {
+  --primary-color: #0D4E8C;
+  --primary-light: #1A6BB5;
+  --primary-lighter: #E3F2FD;
+  --success-color: #66BB6A;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(13, 78, 140, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+  backdrop-filter: blur(8px);
+}
+
+.modal-content {
+  background: white;
+  padding: 60px 50px;
+  border-radius: 30px;
+  text-align: center;
+  max-width: 500px;
+  width: 90%;
+  animation: scaleIn 0.3s ease-out;
+  box-shadow: 0 30px 80px rgba(13, 78, 140, 0.4);
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--primary-lighter);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.5rem;
+  color: var(--primary-color);
+  transition: all 0.3s ease;
+}
+
+.modal-close:hover {
+  background: var(--primary-color);
+  color: white;
+  transform: rotate(90deg);
+}
+
+.signup-modal-content {
+  max-width: 550px;
+}
+
+/* Progress Steps */
+.signup-steps {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 40px;
+  position: relative;
+}
+
+.signup-steps::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #e2e8f0;
+  z-index: 0;
+}
+
+.signup-step {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #cbd5e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: 800;
+  font-size: 1rem;
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s ease;
+}
+
+.signup-step.active {
+  background: var(--primary-color);
+  color: white;
+  transform: scale(1.2);
+  box-shadow: 0 5px 15px rgba(13, 78, 140, 0.3);
+}
+
+.signup-step.completed {
+  background: var(--success-color);
+  color: white;
+}
+
+.signup-step-label {
+  position: absolute;
+  bottom: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  color: #718096;
+  font-weight: 600;
+}
+
+.signup-step.active .signup-step-label {
+  color: var(--primary-color);
+}
+
+/* Form Section */
+.signup-form-section {
+  min-height: 350px;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.signup-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary-color);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.signup-subtitle {
+  font-size: 0.95rem;
+  color: #718096;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+/* Input Groups */
+.login-input-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.login-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 8px;
+  padding-left: 5px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 16px 20px 16px 50px;
+  border: 3px solid var(--primary-lighter);
+  border-radius: 15px;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  background: white;
+  box-sizing: border-box;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px rgba(13, 78, 140, 0.1);
+}
+
+.login-input-icon {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  font-size: 1.3rem;
+  color: var(--primary-color);
+  z-index: 1;
+}
+
+/* Input with Button */
+.input-with-button {
+  display: flex;
+  gap: 10px;
+}
+
+.input-with-button input {
+  flex: 1;
+}
+
+.check-button {
+  padding: 16px 24px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  font-size: 0.95rem;
+}
+
+.check-button:hover {
+  background: var(--primary-light);
+  transform: translateY(-2px);
+}
+
+.check-button:disabled {
+  background: #cbd5e0;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.check-button.verified {
+  background: var(--success-color);
+}
+
+/* Password Strength */
+.password-strength {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.password-strength.weak {
+  background: #fed7d7;
+  color: #c53030;
+}
+
+.password-strength.medium {
+  background: #feebc8;
+  color: #c05621;
+}
+
+.password-strength.strong {
+  background: #c6f6d5;
+  color: #2f855a;
+}
+
+/* Verification Info */
+.verification-info {
+  background: var(--primary-lighter);
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* Form Row */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+/* Radio Group */
+.radio-group {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.radio-option {
+  flex: 1;
+  position: relative;
+}
+
+.radio-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+}
+
+.radio-label {
+  display: block;
+  padding: 15px;
+  border: 3px solid var(--primary-lighter);
+  border-radius: 12px;
+  text-align: center;
+  font-weight: 700;
+  color: #4a5568;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.radio-option input[type="radio"]:checked + .radio-label {
+  border-color: var(--primary-color);
+  background: var(--primary-lighter);
+  color: var(--primary-color);
+}
+
+/* Select Dropdown */
+select.login-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%230D4E8C' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 20px center;
+  padding-right: 50px;
+}
+
+/* Navigation Buttons */
+.signup-nav-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 40px;
+}
+
+.signup-nav-button {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.signup-nav-button.prev {
+  background: white;
+  color: var(--primary-color);
+  border: 2px solid var(--primary-color);
+}
+
+.signup-nav-button.prev:hover {
+  background: var(--primary-lighter);
+}
+
+.signup-nav-button.next {
+  background: var(--primary-color);
+  color: white;
+}
+
+.signup-nav-button.next:hover {
+  background: var(--primary-light);
+  transform: translateY(-2px);
+}
+
+.signup-nav-button:disabled {
+  background: #cbd5e0;
+  color: white;
+  cursor: not-allowed;
+  transform: none;
+  border: none;
+}
+
+/* Success Animation */
+.success-animation {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.success-checkmark {
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 30px;
+  border-radius: 50%;
+  background: var(--success-color);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 3rem;
+  color: white;
+  animation: bounceIn 0.6s ease-out;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .modal-content {
+    padding: 40px 25px;
+    max-width: 95%;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .signup-steps {
+    margin-bottom: 50px;
+  }
+
+  .signup-step-label {
+    font-size: 0.7rem;
+  }
+
+  .login-input {
+    font-size: 1rem;
+    padding: 14px 18px 14px 45px;
+  }
+
+  .check-button {
+    padding: 14px 18px;
+    font-size: 0.85rem;
+  }
+}
