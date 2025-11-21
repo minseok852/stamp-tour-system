@@ -1,24 +1,15 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1.api import api_router # 1. 방금 만든 라우터 통합 파일 import
 
-app = FastAPI()
-
-# React가 실행되는 주소 (보통 localhost:3000)
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:5173",  # <-- 이 react 서버
-    "http://127.0.0.1:5173",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,    # 허용할 출처 목록
-    allow_credentials=True,
-    allow_methods=["*"],      # 허용할 HTTP 메서드 (GET, POST 등 전체 허용)
-    allow_headers=["*"],      # 허용할 헤더 (전체 허용)
+app = FastAPI(
+    title="QR Stamp Tour API",
+    openapi_url="/api/v1/openapi.json"
 )
 
-@app.get("/api/hello")
+# 2. 메인 앱에 API 라우터를 연결 (기본 경로: /api/v1)
+app.include_router(api_router, prefix="/api/v1") 
+
+# [선택 사항] 루트 경로('/')에 간단한 메시지 추가 (404 방지)
+@app.get("/")
 def read_root():
-    return {"message": "FastAPI에서 보낸 데이터입니다! 🚀"}
+    return {"message": "Welcome to the QR Stamp Tour API - Go to /docs for Swagger UI"}

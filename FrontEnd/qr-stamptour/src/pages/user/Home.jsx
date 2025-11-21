@@ -334,8 +334,11 @@ const { useState, useRef } = React;
                                     </button>
                                     <span className="divider">|</span>
                                     <button
+                                        type='button'
                                         className="login-action-link"
-                                        onClick={() => alert('비밀번호 찾기 기능은 준비 중입니다.')}
+                                        onClick={() => {
+                                            setShowLoginModal(false);
+                                            navigate('/Forgotpasswordmodal'); }}
                                     >
                                         비밀번호 찾기
                                     </button>
