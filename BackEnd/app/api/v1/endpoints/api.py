@@ -1,6 +1,5 @@
 from fastapi import APIRouter
-from .endpoints import auth, users, stamps, booths, admin
-#라우터 통합 파일 생성
+from . import auth, users, stamps, booths, admin#라우터 통합 파일 생성
 api_router = APIRouter()
 
 # v1 API 엔드포인트들을 여기에 등록합니다.

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api.v1.api import api_router # 1. 방금 만든 라우터 통합 파일 import
+from app.api.v1.endpoints.api import api_router
 
 app = FastAPI(
     title="QR Stamp Tour API",
