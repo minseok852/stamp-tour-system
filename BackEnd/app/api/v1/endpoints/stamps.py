@@ -86,3 +86,40 @@ def acquire_stamp(
     # NOTE: distance 변수가 현재 calculate_distance를 사용하지 않아 정의되어 있지 않습니다.
     #       Anti-Cheat 서비스 구현 후 복구 예정입니다.
     return {"message": f"'{booth.booth_name}' 스탬프 획득 성공!"}
+
+from typing import List, Optional # List 타입 사용을 위해 추가
+from app.models.booth import Booth # 부스 정보 조회를 위해 모델 import
+
+# --- 응답 스키마 정의 (획득한 스탬프 목록) ---
+# StampRecordResponse: 획득한 스탬프 하나에 대한 정보
+class StampRecordResponse(BaseModel):
+    booth_name: str
+    location_name: Optional[str] = None
+    icon: Optional[str] = None
+    acquired_at: str # 날짜/시간을 문자열로 반환
+    
+    class Config:
+        from_attributes = True
+
+# --- 5. 나의 도장판 조회 API ---
+@router.get("/me", response_model=List[StampRecordResponse])
+def get_my_stamps(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # 1. 특정 사용자의 모든 스탬프 기록을 조회 (JOIN을 통해 부스 정보도 함께 가져옴)
+    stamps = db.query(Stamp, Booth).join(Booth).filter(
+        Stamp.student_id == current_user.student_id
+    ).all()
+    
+    # 2. 결과 포맷팅
+    results = []
+    for stamp, booth in stamps:
+        results.append(StampRecordResponse(
+            booth_name=booth.booth_name,
+            location_name=booth.location_name,
+            icon=booth.icon,
+            acquired_at=stamp.acquired_at.isoformat() # ISO 형식 문자열로 변환
+        ))
+        
+    return results

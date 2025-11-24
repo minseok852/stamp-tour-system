@@ -1,0 +1,49 @@
+-- 1. 사용자 테이블 (Users)
+CREATE TABLE users (
+    student_id VARCHAR(20) PRIMARY KEY,  -- 학번 (아이디)
+    password_hash VARCHAR(255) NOT NULL, -- 비밀번호 (해시 암호화 예정)
+    name VARCHAR(50) NOT NULL,           -- 이름
+    phone_number VARCHAR(20) UNIQUE NOT NULL, -- 전화번호
+    dept_name VARCHAR(100),              -- 학과
+    grade INTEGER,                       -- 학년
+    gender VARCHAR(10),                  -- 성별
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP -- 가입일시
+);
+
+-- 2. 행사 정보 테이블 (Events)
+CREATE TABLE events (
+    event_id SERIAL PRIMARY KEY,
+    event_name VARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    required_stamps INTEGER DEFAULT 14
+);
+
+-- 3. 부스 정보 테이블 (Booths) - 통합 테이블
+CREATE TABLE booths (
+    booth_id SERIAL PRIMARY KEY,
+    event_id INTEGER REFERENCES events(event_id), -- 어느 행사 소속인지
+    booth_name VARCHAR(100) NOT NULL,    -- 부스 이름 (예: 교육관)
+    location_name VARCHAR(100),          -- 건물명/호실 (예: 국제교육관 5층)
+    latitude NUMERIC(10, 8) NOT NULL,    -- 위도
+    longitude NUMERIC(11, 8) NOT NULL,   -- 경도
+    qr_code VARCHAR(50) UNIQUE,          -- QR 코드 값 (예: BOOTH_01)
+    qr_pin VARCHAR(10),                  -- 관리자용 핀번호
+    icon VARCHAR(10)                     -- 아이콘 (예: 🏛️)
+);
+
+-- 4. 스탬프 획득 기록 테이블 (Stamps)
+CREATE TABLE stamps (
+    stamp_id SERIAL PRIMARY KEY,
+    student_id VARCHAR(20) REFERENCES users(student_id), -- 누가
+    booth_id INTEGER REFERENCES booths(booth_id),        -- 어디서
+    acquired_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- 언제
+    method VARCHAR(10) DEFAULT 'QR',     -- 획득 방법 (QR 또는 PIN)
+    
+    -- 한 학생이 한 부스에서 중복으로 찍는 것 방지 (유니크 제약조건)
+    CONSTRAINT unique_stamp_per_user_booth UNIQUE (student_id, booth_id)
+);
+
+-- 성능 향상을 위한 인덱스 설정 (30~40명 동시 접속 대비)
+CREATE INDEX idx_stamps_user_booth ON stamps (student_id, booth_id);
+CREATE INDEX idx_users_phone ON users (phone_number);
