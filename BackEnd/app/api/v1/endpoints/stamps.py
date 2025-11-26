@@ -1,125 +1,252 @@
-# BackEnd/app/api/v1/endpoints/stamps.py
+# app/api/v1/endpoints/stamps.py
+# 스탬프 찍기(QR 스캔), 내 스탬프 조회
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, func # Stamp 모델용
-from sqlalchemy.orm import Session, relationship # Stamp 모델용
-from pydantic import BaseModel # StampAcquireRequest용
-
+from sqlalchemy.orm import Session
+from typing import List
+from datetime import datetime
 from app.db.session import get_db
-from app.api.v1.dependencies import get_current_user
-from app.models.user import User # User 모델 import
-from app.api.v1.endpoints.booths import Booth # Booth 모델 import (사용자 요청 구조 유지)
+from app.models.stamp import Stamp
+from app.models.booth import Booth
+from app.models.user import User
+from app.schemas.stamp import StampCreate, StampResponse, StampScanRequest
+from app.services.gps_service import calculate_distance, is_within_range
 
-# --- 1. Stamp 모델 정의 (사용자 요청 구조 유지) ---
-from app.db.session import Base 
-
-class Stamp(Base):
-    __tablename__ = "stamps"
-
-    stamp_id = Column(Integer, primary_key=True, index=True)
-    student_id = Column(String, ForeignKey("users.student_id"), nullable=False)
-    booth_id = Column(Integer, ForeignKey("booths.booth_id"), nullable=False)
-    acquired_at = Column(DateTime(timezone=True), server_default=func.now())
-    method = Column(String, default='QR')
-    
-    # 릴레이션 정의
-    # user = relationship("User", back_populates="stamps") # User 모델에서 정의 예정
-    # booth = relationship("Booth", back_populates="stamps") # Booth 모델에서 정의 예정
-
-# --- 2. 스탬프 획득 요청 스키마 ---
-class StampAcquireRequest(BaseModel):
-    qr_code_value: str          # 스캔한 QR 코드 값
-    user_latitude: float        # 현재 사용자 위치 (위도)
-    user_longitude: float       # 현재 사용자 위치 (경도)
-
-# --- 3. 라우터 및 API 로직 ---
 router = APIRouter()
 
-# 이 API는 토큰을 가진 사람만 접근 가능합니다!
-# @router.post("/acquire") 함수는 아래의 최종 로직으로 통합됩니다.
+# JWT 토큰에서 현재 사용자 가져오기 (간단 버전)
+def get_current_user_id(token: str) -> str:
+    """
+    JWT 토큰에서 학번 추출 (실제로는 auth.py의 get_current_user 사용)
+    """
+    from app.core.security import decode_access_token
+    payload = decode_access_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="유효하지 않은 토큰입니다.")
+    return payload.get("sub")
 
-# --- 4. 최종 스탬프 획득 API ---
-# from app.services.anti_cheat_service import check_all_fraud # 5m 거리 검증 서비스를 먼저 구현해야 합니다.
 
-@router.post("/acquire", status_code=status.HTTP_201_CREATED)
-def acquire_stamp(
-    request_data: StampAcquireRequest,
-    current_user: User = Depends(get_current_user), 
-    db: Session = Depends(get_db)
+# 1. QR 스캔 및 스탬프 적립
+@router.post("/scan", response_model=StampResponse)
+def scan_qr_and_collect_stamp(
+    scan_data: StampScanRequest,
+    db: Session = Depends(get_db),
+    # token: str = Depends(oauth2_scheme)  # 실제 프로덕션에서는 이렇게
 ):
-    # ! 중요: check_all_fraud 함수가 없으므로 임시로 주석 처리합니다.
-    # from app.services.anti_cheat_service import check_all_fraud 
+    """
+    QR 코드 스캔 및 스탬프 적립
     
-    # 1. QR 코드로 부스 정보 조회
-    booth = db.query(Booth).filter(Booth.qr_code == request_data.qr_code_value).first()
+    1. QR 코드 확인
+    2. GPS 위치 확인 (5m 이내)
+    3. 중복 체크
+    4. 스탬프 저장
+    """
+    
+    # 현재 사용자 (테스트: student_id 직접 전달)
+    # student_id = get_current_user_id(token)  # 실제 프로덕션
+    student_id = scan_data.student_id  # 테스트용
+    
+    # 1. QR 코드로 부스 찾기
+    booth = db.query(Booth).filter(Booth.qr_code == scan_data.qr_code).first()
+    
     if not booth:
-        raise HTTPException(status_code=404, detail="유효하지 않은 QR 코드입니다.")
-
-    # 2. 통합 부정행위 검증 (AntiCheatService 구현 후 사용)
-    # check_all_fraud(
-    #     request_data.user_latitude, 
-    #     request_data.user_longitude, 
-    #     booth, 
-    #     current_user.student_id, 
-    #     db
-    # )
+        raise HTTPException(
+            status_code=404,
+            detail="유효하지 않은 QR 코드입니다."
+        )
     
-    # 3. 중복 스탬프 획득 여부 확인
+    # 2. GPS 위치 검증 (5m 이내)
+    if scan_data.latitude and scan_data.longitude:
+        distance = calculate_distance(
+            scan_data.latitude,
+            scan_data.longitude,
+            float(booth.latitude),
+            float(booth.longitude)
+        )
+        
+        if not is_within_range(distance, max_distance=5.0):
+            raise HTTPException(
+                status_code=400,
+                detail=f"부스에서 너무 멀리 떨어져 있습니다. (현재 {distance:.1f}m)"
+            )
+    
+    # 3. 중복 체크 (이미 찍은 스탬프인지)
     existing_stamp = db.query(Stamp).filter(
-        Stamp.student_id == current_user.student_id,
+        Stamp.student_id == student_id,
         Stamp.booth_id == booth.booth_id
     ).first()
     
     if existing_stamp:
-        raise HTTPException(status_code=400, detail="이미 이 부스의 스탬프를 획득했습니다.")
-
-    # 4. 스탬프 기록 저장
+        raise HTTPException(
+            status_code=400,
+            detail=f"이미 [{booth.booth_name}] 부스의 스탬프를 획득했습니다."
+        )
+    
+    # 4. 스탬프 저장
     new_stamp = Stamp(
-        student_id=current_user.student_id,
+        student_id=student_id,
         booth_id=booth.booth_id,
-        method="QR"
+        method='QR',
+        acquired_at=datetime.now()
     )
     
     db.add(new_stamp)
     db.commit()
-
-    # NOTE: distance 변수가 현재 calculate_distance를 사용하지 않아 정의되어 있지 않습니다.
-    #       Anti-Cheat 서비스 구현 후 복구 예정입니다.
-    return {"message": f"'{booth.booth_name}' 스탬프 획득 성공!"}
-
-from typing import List, Optional # List 타입 사용을 위해 추가
-from app.models.booth import Booth # 부스 정보 조회를 위해 모델 import
-
-# --- 응답 스키마 정의 (획득한 스탬프 목록) ---
-# StampRecordResponse: 획득한 스탬프 하나에 대한 정보
-class StampRecordResponse(BaseModel):
-    booth_name: str
-    location_name: Optional[str] = None
-    icon: Optional[str] = None
-    acquired_at: str # 날짜/시간을 문자열로 반환
+    db.refresh(new_stamp)
     
-    class Config:
-        from_attributes = True
+    # 5. 현재까지 모은 스탬프 개수 확인
+    total_stamps = db.query(Stamp).filter(Stamp.student_id == student_id).count()
+    
+    return {
+        "stamp_id": new_stamp.stamp_id,
+        "student_id": new_stamp.student_id,
+        "booth_id": new_stamp.booth_id,
+        "booth_name": booth.booth_name,
+        "acquired_at": new_stamp.acquired_at,
+        "method": new_stamp.method,
+        "total_stamps": total_stamps,
+        "message": f"🎉 [{booth.booth_name}] 스탬프 획득! (총 {total_stamps}/14)"
+    }
 
-# --- 5. 나의 도장판 조회 API ---
-@router.get("/me", response_model=List[StampRecordResponse])
-def get_my_stamps(
-    current_user: User = Depends(get_current_user),
+
+# 2. PIN 번호로 스탬프 적립 (QR 오류 시 사용)
+@router.post("/pin", response_model=StampResponse)
+def collect_stamp_by_pin(
+    booth_id: int,
+    pin: str,
+    student_id: str,  # 테스트용 (실제로는 JWT에서 추출)
     db: Session = Depends(get_db)
 ):
-    # 1. 특정 사용자의 모든 스탬프 기록을 조회 (JOIN을 통해 부스 정보도 함께 가져옴)
-    stamps = db.query(Stamp, Booth).join(Booth).filter(
-        Stamp.student_id == current_user.student_id
-    ).all()
+    """
+    PIN 번호로 스탬프 적립 (관리자가 QR 오류 시 사용)
+    """
     
-    # 2. 결과 포맷팅
-    results = []
-    for stamp, booth in stamps:
-        results.append(StampRecordResponse(
-            booth_name=booth.booth_name,
-            location_name=booth.location_name,
-            icon=booth.icon,
-            acquired_at=stamp.acquired_at.isoformat() # ISO 형식 문자열로 변환
-        ))
-        
-    return results
+    # 1. 부스 찾기
+    booth = db.query(Booth).filter(Booth.booth_id == booth_id).first()
+    
+    if not booth:
+        raise HTTPException(status_code=404, detail="부스를 찾을 수 없습니다.")
+    
+    # 2. PIN 확인
+    if booth.qr_pin != pin:
+        raise HTTPException(status_code=400, detail="PIN 번호가 올바르지 않습니다.")
+    
+    # 3. 중복 체크
+    existing_stamp = db.query(Stamp).filter(
+        Stamp.student_id == student_id,
+        Stamp.booth_id == booth.booth_id
+    ).first()
+    
+    if existing_stamp:
+        raise HTTPException(
+            status_code=400,
+            detail=f"이미 [{booth.booth_name}] 부스의 스탬프를 획득했습니다."
+        )
+    
+    # 4. 스탬프 저장
+    new_stamp = Stamp(
+        student_id=student_id,
+        booth_id=booth.booth_id,
+        method='PIN',
+        acquired_at=datetime.now()
+    )
+    
+    db.add(new_stamp)
+    db.commit()
+    db.refresh(new_stamp)
+    
+    total_stamps = db.query(Stamp).filter(Stamp.student_id == student_id).count()
+    
+    return {
+        "stamp_id": new_stamp.stamp_id,
+        "student_id": new_stamp.student_id,
+        "booth_id": new_stamp.booth_id,
+        "booth_name": booth.booth_name,
+        "acquired_at": new_stamp.acquired_at,
+        "method": new_stamp.method,
+        "total_stamps": total_stamps,
+        "message": f"🎉 [{booth.booth_name}] 스탬프 획득! (총 {total_stamps}/14)"
+    }
+
+
+# 3. 내 스탬프 조회
+@router.get("/my-stamps", response_model=List[StampResponse])
+def get_my_stamps(
+    student_id: str,  # 테스트용 (실제로는 JWT에서 추출)
+    db: Session = Depends(get_db)
+):
+    """
+    내가 획득한 스탬프 목록 조회
+    """
+    stamps = db.query(Stamp).filter(Stamp.student_id == student_id).all()
+    
+    result = []
+    for stamp in stamps:
+        booth = db.query(Booth).filter(Booth.booth_id == stamp.booth_id).first()
+        result.append({
+            "stamp_id": stamp.stamp_id,
+            "student_id": stamp.student_id,
+            "booth_id": stamp.booth_id,
+            "booth_name": booth.booth_name if booth else "알 수 없음",
+            "acquired_at": stamp.acquired_at,
+            "method": stamp.method,
+            "total_stamps": len(stamps)
+        })
+    
+    return result
+
+
+# 4. 완주 확인
+@router.get("/completion-status")
+def check_completion_status(
+    student_id: str,  # 테스트용
+    db: Session = Depends(get_db)
+):
+    """
+    완주 여부 확인
+    """
+    total_stamps = db.query(Stamp).filter(Stamp.student_id == student_id).count()
+    required_stamps = 14  # 필요한 스탬프 개수
+    
+    is_completed = total_stamps >= required_stamps
+    
+    return {
+        "student_id": student_id,
+        "total_stamps": total_stamps,
+        "required_stamps": required_stamps,
+        "is_completed": is_completed,
+        "remaining": max(0, required_stamps - total_stamps),
+        "message": "🎉 완주 축하합니다!" if is_completed else f"스탬프 {required_stamps - total_stamps}개 남았습니다!"
+    }
+
+
+# 5. 모든 부스 목록 조회 (사용자용)
+@router.get("/booths-status")
+def get_booths_with_status(
+    student_id: str,  # 테스트용
+    db: Session = Depends(get_db)
+):
+    """
+    모든 부스 목록 + 내가 찍은 스탬프 표시
+    """
+    booths = db.query(Booth).all()
+    my_stamps = db.query(Stamp).filter(Stamp.student_id == student_id).all()
+    my_booth_ids = [s.booth_id for s in my_stamps]
+    
+    result = []
+    for booth in booths:
+        result.append({
+            "booth_id": booth.booth_id,
+            "booth_name": booth.booth_name,
+            "location_name": booth.location_name,
+            "latitude": float(booth.latitude),
+            "longitude": float(booth.longitude),
+            "icon": booth.icon,
+            "collected": booth.booth_id in my_booth_ids
+        })
+    
+    return {
+        "total_booths": len(booths),
+        "collected_count": len(my_stamps),
+        "booths": result
+    }

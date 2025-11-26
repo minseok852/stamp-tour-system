@@ -1,11 +1,17 @@
+# app/schemas/token.py
+# JWT 토큰 관련 스키마
 from pydantic import BaseModel
+from typing import Optional
+from .user import UserInfo
 
-# 로그인 요청 시 필요한 스키마
-class TokenRequest(BaseModel):
-    student_id: str
-    password: str
-
-# 로그인 성공 시 반환할 JWT 토큰 응답 스키마
+# 토큰 응답 스키마
 class Token(BaseModel):
     access_token: str
-    token_type: str = "bearer"
+    token_type: str
+    user: UserInfo
+
+# 토큰 데이터 (디코딩된 페이로드)
+class TokenData(BaseModel):
+    student_id: Optional[str] = None
+    name: Optional[str] = None
+    dept_name: Optional[str] = None
