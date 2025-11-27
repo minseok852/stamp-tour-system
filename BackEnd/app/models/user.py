@@ -1,3 +1,4 @@
+#app/models/user.py
 #사용자(학생), 관리자 모델
 #실제 db에 저장될 사용자 테이블을 정의 하는 곳
 from sqlalchemy import Column, String, Integer, Boolean, DateTime, func
@@ -13,4 +14,5 @@ class User(Base):
     dept_name = Column(String, nullable=False)
     grade = Column(Integer, nullable=False)
     gender = Column(String, nullable=False)
+    role = Column(String, nullable=False, default='user')  # user 또는 admin
     created_at = Column(DateTime(timezone=True), server_default=func.now())

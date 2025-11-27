@@ -14,6 +14,7 @@ def get_current_user(
     db: Session = Depends(get_db), 
     token: str = Depends(oauth2_scheme) # Header에서 토큰 추출
 ):
+    """현재 로그인한 사용자 정보 가져오기"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="인증 정보를 확인할 수 없습니다.",
@@ -36,3 +37,15 @@ def get_current_user(
         raise credentials_exception
         
     return user
+
+
+def get_current_admin(
+    current_user: User = Depends(get_current_user)
+):
+    """관리자 권한 확인"""
+    if current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="관리자 권한이 필요합니다."
+        )
+    return current_user

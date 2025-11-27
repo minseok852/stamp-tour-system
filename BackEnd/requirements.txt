@@ -1,1 +1,203 @@
 #의존성 패키지 목록
+-- ========================================
+-- QR 스탬프 투어 시스템 - 완전판 (오타 수정)
+-- ========================================
+
+-- ========================================
+-- 1. events 테이블
+-- ========================================
+CREATE TABLE IF NOT EXISTS events (
+    event_id SERIAL PRIMARY KEY,
+    event_name VARCHAR(100) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    required_stamps INTEGER DEFAULT 14
+);
+
+-- ========================================
+-- 2. users 테이블 (role 포함)
+-- ========================================
+CREATE TABLE IF NOT EXISTS users (
+    student_id VARCHAR(20) PRIMARY KEY,
+    password_hash VARCHAR(255) NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    phone_number VARCHAR(20) UNIQUE NOT NULL,
+    dept_name VARCHAR(50) NOT NULL,
+    grade INTEGER NOT NULL,
+    gender VARCHAR(10) NOT NULL,
+    role VARCHAR(20) NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_role CHECK (role IN ('user', 'admin'))
+);
+
+-- ========================================
+-- 3. booths 테이블
+-- ========================================
+CREATE TABLE IF NOT EXISTS booths (
+    booth_id SERIAL PRIMARY KEY,
+    event_id INTEGER REFERENCES events(event_id),
+    booth_name VARCHAR(100) NOT NULL,
+    location_name VARCHAR(100),
+    latitude NUMERIC(10, 8) NOT NULL,
+    longitude NUMERIC(11, 8) NOT NULL,
+    qr_code VARCHAR(50) UNIQUE,
+    qr_pin VARCHAR(10),
+    icon VARCHAR(10)
+);
+
+-- ========================================
+-- 4. stamps 테이블
+-- ========================================
+CREATE TABLE IF NOT EXISTS stamps (
+    stamp_id SERIAL PRIMARY KEY,
+    student_id VARCHAR(20) REFERENCES users(student_id) ON DELETE CASCADE,
+    booth_id INTEGER REFERENCES booths(booth_id) ON DELETE CASCADE,
+    acquired_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    method VARCHAR(10) DEFAULT 'QR',
+    CONSTRAINT unique_stamp_per_user_booth UNIQUE (student_id, booth_id)
+);
+
+-- ========================================
+-- 5. 인덱스 생성
+-- ========================================
+CREATE INDEX idx_stamps_student_id ON stamps(student_id);
+CREATE INDEX idx_stamps_booth_id ON stamps(booth_id);
+CREATE INDEX idx_stamps_acquired_at ON stamps(acquired_at);
+CREATE INDEX idx_booths_event_id ON booths(event_id);
+CREATE INDEX idx_users_phone_number ON users(phone_number);
+CREATE INDEX idx_users_role ON users(role);
+
+-- ========================================
+-- 6. 기본 데이터 삽입
+-- ========================================
+
+-- 이벤트
+INSERT INTO events (event_name, start_date, end_date, required_stamps) 
+VALUES ('2024 대진대 캠퍼스 스탬프 투어', '2024-11-25', '2024-12-20', 14)
+ON CONFLICT DO NOTHING;
+
+-- 부스 14개
+INSERT INTO booths (event_id, booth_name, location_name, latitude, longitude, qr_code, qr_pin, icon) VALUES
+(1, '교육관', '국제교육관(5층)', 37.6313, 127.2533, 'BOOTH_01', '1234', '🏛️'),
+(1, '대학원', '교육대학원(207호)', 37.6318, 127.2538, 'BOOTH_02', '1234', '🎓'),
+(1, '산학관', '글로컬산학관(109호)', 37.6308, 127.2528, 'BOOTH_03', '1234', '🏢'),
+(1, '인문관', '인문과학관(101호)', 37.6315, 127.2542, 'BOOTH_04', '1234', '📖'),
+(1, '안보관', '국방과학관(101호)', 37.6310, 127.2525, 'BOOTH_05', '1234', '🛡️'),
+(1, '화생관', '학생과학관(139호)', 37.6320, 127.2545, 'BOOTH_06', '1234', '🔬'),
+(1, '학생관', '정해문화장1층(319호)', 37.6312, 127.2535, 'BOOTH_07', '1234', '🏫'),
+(1, '정보관', '체육정보관(103호)', 37.6305, 127.2530, 'BOOTH_08', '1234', '⚽'),
+(1, '생활관', '학생생활관(442호)', 37.6322, 127.2548, 'BOOTH_09', '1234', '🏠'),
+(1, '도서관', '중앙도서관(102호)', 37.6316, 127.2540, 'BOOTH_10', '1234', '📚'),
+(1, '수련관', '수학과학관(102호)', 37.6307, 127.2532, 'BOOTH_11', '1234', '🔢'),
+(1, '호연관', '관광고석호연관(102호)', 37.6311, 127.2537, 'BOOTH_12', '1234', '✈️'),
+(1, '교양관', '교양교육센터(88-110호)', 37.6314, 127.2534, 'BOOTH_13', '1234', '💡'),
+(1, '공학관', 'IT공학관', 37.6309, 127.2544, 'BOOTH_14', '1234', '💻')
+ON CONFLICT (qr_code) DO NOTHING;
+
+-- ========================================
+-- 7. 테스트 계정 (비밀번호: test1234)
+-- ========================================
+
+-- 관리자 1: admin001
+INSERT INTO users (student_id, password_hash, name, phone_number, dept_name, grade, gender, role) 
+VALUES (
+    'admin001',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5iSUV0OA8qmC.',
+    '시스템관리자',
+    '010-0000-0001',
+    '학생지원팀',
+    0,
+    'male',
+    'admin'
+)
+ON CONFLICT (student_id) DO NOTHING;
+
+-- 관리자 2: 민석님 (20221563)
+INSERT INTO users (student_id, password_hash, name, phone_number, dept_name, grade, gender, role) 
+VALUES (
+    '20221563',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5iSUV0OA8qmC.',
+    '민석',
+    '010-1234-5678',
+    '컴퓨터공학과',
+    3,
+    'male',
+    'admin'
+)
+ON CONFLICT (student_id) 
+DO UPDATE SET role = 'admin';
+
+-- 일반 사용자 1
+INSERT INTO users (student_id, password_hash, name, phone_number, dept_name, grade, gender, role) 
+VALUES (
+    '20221564',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5iSUV0OA8qmC.',
+    '김철수',
+    '010-2345-6789',
+    '소프트웨어학과',
+    2,
+    'male',
+    'user'
+)
+ON CONFLICT (student_id) DO NOTHING;
+
+-- 일반 사용자 2
+INSERT INTO users (student_id, password_hash, name, phone_number, dept_name, grade, gender, role) 
+VALUES (
+    '20221565',
+    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5iSUV0OA8qmC.',
+    '이영희',
+    '010-3456-7890',
+    '전자공학과',
+    4,
+    'female',
+    'user'
+)
+ON CONFLICT (student_id) DO NOTHING;
+
+-- 테스트용 스탬프 (일반 사용자 2가 5개 획득)
+INSERT INTO stamps (student_id, booth_id, method) VALUES
+('20221565', 1, 'QR'),
+('20221565', 2, 'QR'),
+('20221565', 3, 'QR'),
+('20221565', 4, 'QR'),
+('20221565', 5, 'QR')
+ON CONFLICT DO NOTHING;
+
+-- ========================================
+-- 8. 확인 쿼리
+-- ========================================
+
+-- 테이블 목록
+SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;
+
+-- 사용자 목록 (역할별)
+SELECT student_id, name, dept_name, role, created_at 
+FROM users 
+ORDER BY role DESC, student_id;
+
+-- 관리자만
+SELECT student_id, name, dept_name FROM users WHERE role = 'admin';
+
+-- 일반 사용자만
+SELECT student_id, name, dept_name FROM users WHERE role = 'user';
+
+-- 부스 확인
+SELECT booth_id, booth_name, qr_code FROM booths ORDER BY booth_id;
+
+-- 스탬프 확인
+SELECT u.name, b.booth_name, s.acquired_at 
+FROM stamps s
+JOIN users u ON s.student_id = u.student_id
+JOIN booths b ON s.booth_id = b.booth_id
+ORDER BY s.acquired_at;
+
+-- ========================================
+-- 완료!
+-- ========================================
+-- 테스트 계정:
+-- 관리자: admin001 / test1234
+-- 관리자: 20221563 / test1234
+-- 사용자: 20221564 / test1234
+-- 사용자: 20221565 / test1234 (스탬프 5개 보유)
+-- ========================================
