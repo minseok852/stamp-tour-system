@@ -5,6 +5,8 @@ import Signup from './pages/user/Signup';
 import ForgotPasswordModal from './pages/user/Forgotpasswordmodal';
 import Dashboard from './pages/admin/Dashboard';
 import QRManage from './pages/admin/QRManage';
+import Login from './pages/admin/Login';
+import NotFound from './pages/Notfound';
 // import './App.css'; // 필요하면 유지
 
 function App() {
@@ -12,6 +14,7 @@ function App() {
     <Routes>
       {/* 주소가 '/' 일 때는 Home 컴포넌트를 보여줌 */}
       <Route path="/" element={<Home />} />
+      <Route path="/login" element={<Login />} />
       {/* 주소가 '/signup' 일 때는 Signup 컴포넌트를 보여줌 */}
       <Route path="/signup" element={<Signup isOpen={true} onClose={() => window.history.back()} />} />
       <Route path="/forgotpasswordmodal" element={<ForgotPasswordModal isOpen={true} onClose={() => window.history.back()} />} />
@@ -19,6 +22,8 @@ function App() {
       예정*/}
       <Route path="/admin/dashboard" element={<Dashboard />} />
       <Route path="/admin/qrmanage" element={<QRManage />} />
+      {/* 404 페이지 - 항상 마지막에 */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
