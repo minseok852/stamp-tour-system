@@ -104,7 +104,8 @@ def login_user(
             "student_id": user.student_id,
             "name": user.name,
             "dept_name": user.dept_name,
-            "grade": user.grade
+            "grade": user.grade,
+            "role": user.role
         }
     }
 
