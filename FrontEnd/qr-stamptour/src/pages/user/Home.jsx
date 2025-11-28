@@ -3,7 +3,7 @@ import React from 'react';
 import '../../styles/Home.css'; 
 import frontImage from '../../assets/images/앞화면.png';
 import { useNavigate } from 'react-router-dom';
-import { isAuthenticated, getStoredUser, logoutUser } from '../../services/authApi';
+import { isAuthenticated,getCurrentUser,logout } from '../../services/authApi';
 
 const { useState, useRef, useEffect } = React;
  
@@ -20,7 +20,7 @@ const Home = () => {
     useEffect(() => {
         const checkAuth = () => {
             if (isAuthenticated()) {
-                const storedUser = getStoredUser();
+                const storedUser = getCurrentUser();
                 setIsLoggedIn(true);
                 setUser(storedUser);
             }
@@ -64,7 +64,7 @@ const Home = () => {
     };
 
     const handleLogout = () => {
-        logoutUser();
+        logout();
         setIsLoggedIn(false);
         setUser(null);
         setStamps(stamps.map(stamp => ({ ...stamp, collected: false })));
@@ -239,28 +239,6 @@ const Home = () => {
                         {isLoggedIn && (
                             <div className="submit-form-section">
                                 <form className="submit-form" onSubmit={handleSubmit}>
-                                    <div className="form-group">
-                                        <label className="form-label">이름</label>
-                                        <input 
-                                            type="text"
-                                            className="form-input"
-                                            placeholder="이름을 입력하세요"
-                                            value={submitForm.name}
-                                            onChange={(e) => setSubmitForm({...submitForm, name: e.target.value})}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">학번</label>
-                                        <input 
-                                            type="text"
-                                            className="form-input"
-                                            placeholder="학번을 입력하세요"
-                                            value={submitForm.studentId}
-                                            onChange={(e) => setSubmitForm({...submitForm, studentId: e.target.value})}
-                                            required
-                                        />
-                                    </div>
                                     <button 
                                         type="submit"
                                         className="submit-button"
