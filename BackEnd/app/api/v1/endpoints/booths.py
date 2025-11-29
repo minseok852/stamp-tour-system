@@ -15,8 +15,8 @@ router = APIRouter()
 # ----------------------------------------------------------------------
 @router.get("/", response_model=List[BoothResponse])
 def get_all_booths(
-    db: Session = Depends(get_db), 
-    current_user: User = Depends(get_current_user) # JWT 인증 필요
+    db: Session = Depends(get_db) 
+    #current_user: User = Depends(get_current_user) # JWT 인증 필요
 ):
     # 관리자 여부 확인 로직이 필요하지만, 현재는 JWT 인증만으로 통과
     booths = db.query(Booth).all()

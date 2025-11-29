@@ -17,6 +17,24 @@ router = APIRouter()
 # OAuth2 설정 (JWT 토큰 인증)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
+
+# 학번 중복 확인 API
+@router.get("/check-student-id/{student_id}")
+def check_student_id(
+    student_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    학번 중복 여부를 확인합니다.
+    사용 가능하면 {"available": true}, 중복이면 {"available": false} 반환
+    """
+    db_user = db.query(User).filter(User.student_id == student_id).first()
+    
+    if db_user:
+        return {"available": False, "message": "이미 사용 중인 학번입니다."}
+    
+    return {"available": True, "message": "사용 가능한 학번입니다."}
+
 # 회원가입 API
 @router.post("/register", response_model=UserResponse)
 def register_user(
