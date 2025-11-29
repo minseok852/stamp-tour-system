@@ -31,7 +31,7 @@ const Login = () => {
     try {
       const response = await login(formData.studentId, formData.password);
       
-      console.log('로그인 성공:', response);
+      //console.log('로그인 성공:', response);
       
       // 역할에 따라 리다이렉트
       if (response.user.role === 'admin') {
@@ -42,7 +42,7 @@ const Login = () => {
         navigate('/');  // Home으로
       }
     } catch (err) {
-      console.error('로그인 에러:', err);
+      //console.error('로그인 에러:', err);
       setError(err.detail || '로그인에 실패했습니다. 학번과 비밀번호를 확인해주세요.');
     } finally {
       setLoading(false);

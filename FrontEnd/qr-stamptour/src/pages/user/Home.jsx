@@ -4,7 +4,7 @@ import '../../styles/Home.css';
 import frontImage from '../../assets/images/앞화면.png';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated,getCurrentUser,logout } from '../../services/authApi';
-
+import { getAllBooths } from '../../services/boothApi';
 const { useState, useRef, useEffect } = React;
  
 const Home = () => {
@@ -13,6 +13,7 @@ const Home = () => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [user, setUser] = useState(null);
     const [submitForm, setSubmitForm] = useState({ name: '', studentId: '' });
+    const [loading, setLoading]=useState(true);
 
     const stampSectionRef = useRef(null);
 
@@ -28,23 +29,53 @@ const Home = () => {
         checkAuth();
     }, []);
 
-    const [stamps, setStamps] = useState([
-        { id: 1, location: '교수회관', building: '국제교육팀(301호)', icon: '🏛️', collected: false, lat: 37.6313, lng: 127.2533 },
-        { id: 2, location: '대학원', building: '교직과(507호)', icon: '🎓', collected: false, lat: 37.6318, lng: 127.2538 },
-        { id: 3, location: '인문학관', building: '글쓰기센터(109호)', icon: '🏢', collected: false, lat: 37.6308, lng: 127.2528 },
-        { id: 4, location: '인문학관', building: '인성교육팀(101호)', icon: '📖', collected: false, lat: 37.6315, lng: 127.2542 },
-        { id: 5, location: '안문학관', building: '교양교육팀(101호)', icon: '🛡️', collected: false, lat: 37.6310, lng: 127.2525 },
-        { id: 6, location: '학생회관', building: '학생복지팀(319호)', icon: '🔬', collected: false, lat: 37.6320, lng: 127.2545 },
-        { id: 7, location: '학생회관', building: '장애학생지원센터(319호)', icon: '🏫', collected: false, lat: 37.6312, lng: 127.2535 },
-        { id: 8, location: '정보전산원', building: '취업팀(103호)', icon: '⚽', collected: false, lat: 37.6305, lng: 127.2530 },
-        { id: 9, location: '정보전산원', building: '학생생활상담센터(402호)', icon: '🏠', collected: false, lat: 37.6322, lng: 127.2548 },
-        { id: 10, location: '중앙도서관', building: '교수학습지원센터(1021호)', icon: '📚', collected: false, lat: 37.6316, lng: 127.2540 },
-        { id: 11, location: '중앙도서관', building: '학생성공팀(1021호)', icon: '🔢', collected: false, lat: 37.6307, lng: 127.2532 },
-        { id: 12, location: '중앙도서관', building: '원격교육지원센터(1021호)', icon: '✈️', collected: false, lat: 37.6311, lng: 127.2537 },
-        { id: 13, location: '중앙도서관', building: '학술정보팀(5층)', icon: '💡', collected: false, lat: 37.6314, lng: 127.2534 },
-        { id: 14, location: '공 나', building: '공학교육혁신센터(B8-107호)', icon: '💻', collected: false, lat: 37.6309, lng: 127.2544 },
-    ]);
-
+    const [stamps, setStamps] = useState([]);
+    //부스 목록 불러오기
+    useEffect(() => {
+    const loadBooths = async () => {
+        try {
+            setLoading(true);
+            const boothsData = await getAllBooths();
+            
+            // API 데이터를 stamps 형식으로 변환
+            const stampsData = boothsData.map(booth => ({
+                id: booth.booth_id,
+                location: booth.booth_name,
+                building: booth.location_name,
+                icon: booth.icon || '📍',
+                collected: false,
+                lat: parseFloat(booth.latitude),
+                lng: parseFloat(booth.longitude)
+            }));
+            
+            setStamps(stampsData);
+        } catch (error) {
+            alert('부스 목록을 불러오는데 실패했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    loadBooths();
+    }, []);
+    //로딩 화면
+    if(loading){
+        return(
+            <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh',
+            fontSize: '1.5rem',
+            color: '#0D4E8C'
+        }}>
+            <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🎓</div>
+                <div>부스 목록을 불러오는 중...</div>
+            </div>
+        </div>
+        );
+    }
     const collectedCount = stamps.filter(s => s.collected).length;
     const progressPercentage = (collectedCount / stamps.length) * 100;
 

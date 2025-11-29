@@ -1,36 +1,49 @@
-// src/services/authApi.js
-// 회원가입 관련 기능 및 로그인 기능 api통신
-
+// FrontEnd/qr-stamptour/src/services/authApi.js
 import api from './api';
 
-// 관리자(또는 사용자) 로그인 API 호출
+// 학번 중복확인
+export const checkStudentId = async (studentId) => {
+    try {
+        const response = await api.get(`/auth/check-student-id/${studentId}`);
+        return response.data; // { available: true/false, message: "..." }
+    } catch (error) {
+        //console.error('학번 중복확인 실패:', error);
+        throw error;
+    }
+};
+
+// 로그인
 export const login = async (studentId, password) => {
     try {
-        // 백엔드 API: POST /api/v1/auth/login
-        const response = await api.post('/auth/login', { 
-            student_id: studentId, 
-            password: password 
+        const response = await api.post('/auth/login', {
+            student_id: studentId,
+            password: password
         });
-        
-        // 응답 구조: { access_token, token_type, user: {...} }
-        const token = response.data.access_token;
-        const user = response.data.user;
-        
-        // 토큰과 사용자 정보를 로컬 스토리지에 저장
-        localStorage.setItem('accessToken', token);
+
+        const { access_token, user } = response.data;
+
+        // localStorage에 토큰과 사용자 정보 저장
+        localStorage.setItem('accessToken', access_token);
         localStorage.setItem('user', JSON.stringify(user));
 
         return response.data;
     } catch (error) {
-        console.error('로그인 실패:', error);
-        throw error.response?.data || { detail: '로그인 실패' };
+        //console.error('로그인 실패:', error); //디버그 용 주석 처리 테스트 완료
+        throw error;
     }
 };
 
-// 로그아웃 (토큰 삭제)
+// 로그아웃
 export const logout = () => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('user');
+};
+
+// 로그인 여부 확인
+export const isAuthenticated = () => {
+    const token = localStorage.getItem('accessToken');
+    const user = localStorage.getItem('user');
+    return !!(token && user);
 };
 
 // 현재 로그인한 사용자 정보 가져오기
@@ -39,10 +52,9 @@ export const getCurrentUser = () => {
     return userStr ? JSON.parse(userStr) : null;
 };
 
-// 사용자 등록 (회원가입)
+// 회원가입
 export const registerUser = async (userData) => {
     try {
-        // 백엔드 API: POST /api/v1/auth/register
         const response = await api.post('/auth/register', {
             student_id: userData.studentId,
             password: userData.password,
@@ -52,15 +64,10 @@ export const registerUser = async (userData) => {
             grade: parseInt(userData.grade),
             gender: userData.gender
         });
-        
+
         return response.data;
     } catch (error) {
-        console.error('회원가입 실패:', error);
-        throw error.response?.data || { detail: '회원가입 실패' };
+        //console.error('회원가입 실패:', error);
+        throw error;
     }
 };
-
-export const isAuthenticated = () => {
-    //jwt 토큰이 있는 지 확인
-    return !!localStorage.getItem('accessToken');
-}
