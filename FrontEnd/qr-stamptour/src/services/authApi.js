@@ -22,8 +22,8 @@ export const login = async (studentId, password) => {
 
         const { access_token, user } = response.data;
 
-        // localStorage에 토큰과 사용자 정보 저장
-        localStorage.setItem('accessToken', access_token);
+        // ✅ 수정: accessToken → access_token
+        localStorage.setItem('access_token', access_token);
         localStorage.setItem('user', JSON.stringify(user));
 
         return response.data;
@@ -35,13 +35,15 @@ export const login = async (studentId, password) => {
 
 // 로그아웃
 export const logout = () => {
-    localStorage.removeItem('accessToken');
+    // ✅ 수정: accessToken → access_token
+    localStorage.removeItem('access_token');
     localStorage.removeItem('user');
 };
 
 // 로그인 여부 확인
 export const isAuthenticated = () => {
-    const token = localStorage.getItem('accessToken');
+    // ✅ 수정: accessToken → access_token
+    const token = localStorage.getItem('access_token');
     const user = localStorage.getItem('user');
     return !!(token && user);
 };

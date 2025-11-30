@@ -7,6 +7,7 @@ import Dashboard from './pages/admin/Dashboard';
 import QRManage from './pages/admin/QRManage';
 import Login from './pages/admin/Login';
 import NotFound from './pages/Notfound';
+import QRScan from './pages/user/QRScan';
 // import './App.css'; // 필요하면 유지
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
       {/* 주소가 '/signup' 일 때는 Signup 컴포넌트를 보여줌 */}
       <Route path="/signup" element={<Signup isOpen={true} onClose={() => window.history.back()} />} />
       <Route path="/forgotpasswordmodal" element={<ForgotPasswordModal isOpen={true} onClose={() => window.history.back()} />} />
+      <Route path="/qr-scan" element={<QRScan />} />  
       {/*관리자 dashboard와 qrmanage 쪽이다. 아직 링크만 입력하면 들어갈 수 있기에 조만간 조취할 
       예정*/}
       <Route path="/admin/dashboard" element={<Dashboard />} />

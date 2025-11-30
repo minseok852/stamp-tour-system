@@ -15,7 +15,7 @@ const api = axios.create({
 // 요청 인터셉터: 로컬 스토리지에서 JWT 토큰을 가져와 Header에 추가합니다.
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('accessToken');
+        const token = localStorage.getItem('access_token');
         if (token) {
             // Authorization: Bearer <token> 형식으로 헤더에 추가
             config.headers.Authorization = `Bearer ${token}`;

@@ -1,10 +1,12 @@
-// Home.jsx - 로그인 모달 제거, 별도 Login 페이지 사용
+// Home.jsx - 내 스탬프 API 연동 버전
 import React from 'react';
 import '../../styles/Home.css'; 
 import frontImage from '../../assets/images/앞화면.png';
 import { useNavigate } from 'react-router-dom';
 import { isAuthenticated,getCurrentUser,logout } from '../../services/authApi';
 import { getAllBooths } from '../../services/boothApi';
+import { getMyStamps } from '../../services/stampApi';
+
 const { useState, useRef, useEffect } = React;
  
 const Home = () => {
@@ -30,52 +32,82 @@ const Home = () => {
     }, []);
 
     const [stamps, setStamps] = useState([]);
-    //부스 목록 불러오기
-    useEffect(() => {
-    const loadBooths = async () => {
-        try {
-            setLoading(true);
-            const boothsData = await getAllBooths();
-            
-            // API 데이터를 stamps 형식으로 변환
-            const stampsData = boothsData.map(booth => ({
-                id: booth.booth_id,
-                location: booth.booth_name,
-                building: booth.location_name,
-                icon: booth.icon || '📍',
-                collected: false,
-                lat: parseFloat(booth.latitude),
-                lng: parseFloat(booth.longitude)
-            }));
-            
-            setStamps(stampsData);
-        } catch (error) {
-            alert('부스 목록을 불러오는데 실패했습니다.');
-        } finally {
-            setLoading(false);
-        }
-    };
     
-    loadBooths();
+    // 부스 목록 불러오기
+    useEffect(() => {
+        const loadBooths = async () => {
+            try {
+                setLoading(true);
+                const boothsData = await getAllBooths();
+                
+                // API 데이터를 stamps 형식으로 변환
+                const stampsData = boothsData.map(booth => ({
+                    id: booth.booth_id,
+                    location: booth.booth_name,
+                    building: booth.location_name,
+                    icon: booth.icon || '📍',
+                    collected: false,
+                    lat: parseFloat(booth.latitude),
+                    lng: parseFloat(booth.longitude)
+                }));
+                
+                setStamps(stampsData);
+            } catch (error) {
+                alert('부스 목록을 불러오는데 실패했습니다.');
+            } finally {
+                setLoading(false);
+            }
+        };
+        
+        loadBooths();
     }, []);
-    //로딩 화면
+
+    // ✨ 새로 추가: 내가 모은 스탬프 불러오기 (로그인 시)
+    useEffect(() => {
+        const loadMyStamps = async () => {
+            if (!isLoggedIn || stamps.length === 0) return;
+            
+            try {
+                const myStampsData = await getMyStamps();
+                
+                // 내가 모은 스탬프 ID 목록
+                const collectedBoothIds = myStampsData.map(stamp => stamp.booth_id);
+                
+                // stamps 배열 업데이트 (collected 상태 변경)
+                setStamps(prevStamps => 
+                    prevStamps.map(stamp => ({
+                        ...stamp,
+                        collected: collectedBoothIds.includes(stamp.id)
+                    }))
+                );
+            } catch (error) {
+                // console.error('내 스탬프 로딩 실패:', error);
+                // 에러 시 조용히 무시 (401 에러 등)
+            }
+        };
+        
+        loadMyStamps();
+    }, [isLoggedIn, stamps.length]); // isLoggedIn이나 stamps가 변경되면 실행
+
+    // 로딩 화면
     if(loading){
         return(
             <div style={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: '100vh',
-            fontSize: '1.5rem',
-            color: '#0D4E8C'
-        }}>
-            <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🎓</div>
-                <div>부스 목록을 불러오는 중...</div>
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100vh',
+                fontSize: '1.5rem',
+                color: '#0D4E8C'
+            }}>
+                <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🎓</div>
+                    <div>부스 목록을 불러오는 중...</div>
+                </div>
             </div>
-        </div>
         );
     }
+
     const collectedCount = stamps.filter(s => s.collected).length;
     const progressPercentage = (collectedCount / stamps.length) * 100;
 
@@ -83,34 +115,36 @@ const Home = () => {
         stampSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
+    // ✨ 수정: 스탬프 클릭 동작 변경
     const handleStampClick = (id) => {
         if (!isLoggedIn) {
             alert('로그인이 필요합니다!');
             navigate('/login');
             return;
         }
-        setStamps(stamps.map(stamp => 
-            stamp.id === id ? { ...stamp, collected: !stamp.collected } : stamp
-        ));
+        
+        // 실제로는 QR 스캔 화면으로 이동해야 함
+        navigate('/qr-scan');
     };
 
     const handleLogout = () => {
         logout();
         setIsLoggedIn(false);
         setUser(null);
+        // 스탬프 초기화
         setStamps(stamps.map(stamp => ({ ...stamp, collected: false })));
         alert('로그아웃되었습니다.');
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        if (collectedCount < 14) {
-            alert(`14개의 스탬프를 모두 모아야 제출할 수 있습니다! (현재 ${collectedCount}/14)`);
+        if (collectedCount < 15) {
+            alert(`15개의 스탬프를 모두 모아야 제출할 수 있습니다! (현재 ${collectedCount}/15)`);
             return;
         }
-        alert(`${submitForm.name}님! 14개의 스탬프를 모두 모으셨습니다!`);
-        setStamps(stamps.map(stamp => ({ ...stamp, collected: false })));
-        setSubmitForm({ name: '', studentId: '' });
+        alert(`${submitForm.name}님! 15개의 스탬프를 모두 모으셨습니다!`);
+        // 실제로는 완주 제출 API 호출
+        // submitCompletion(submitForm);
     };
 
     return (
@@ -174,7 +208,14 @@ const Home = () => {
                 </div>
                 <div 
                     className={`bottom-nav-item ${currentPage === 'scan' ? 'active' : ''}`}
-                    onClick={() => alert('QR 스캔 기능은 모바일 앱에서 사용 가능합니다!')}
+                    onClick={() =>{
+                        if(isLoggedIn){
+                            navigate('/qr-scan');
+                        }else{
+                            alert('로그인이 필요합니다!');
+                            navigate('/login');
+                        }
+                    }}
                 >
                     <div className="bottom-nav-icon">📷</div>
                     <div className="bottom-nav-label">QR스캔</div>
@@ -184,7 +225,7 @@ const Home = () => {
                     onClick={() => isLoggedIn ? setCurrentPage('profile') : navigate('/login')}
                 >
                     <div className="bottom-nav-icon">👤</div>
-                    <div className="bottom-nav-label">내정보</div>
+                    <div className="bottom-nav-label">내 정보</div>
                 </div>
             </nav>
 
@@ -225,7 +266,7 @@ const Home = () => {
                             <div className="stamp-header-bg">
                                 <h2 className="stamp-title">🎫 스탬프 장소 안내</h2>
                                 <p className="stamp-subtitle">
-                                    대진대 캠퍼스를 탐험하며 14개의 스탬프를 모두 모아보세요!
+                                    대진대 캠퍼스를 탐험하며 15개의 스탬프를 모두 모아보세요!
                                 </p>
                             </div>
                         </div>
@@ -261,7 +302,7 @@ const Home = () => {
                                     </div>
                                     <div className="stamp-location">{stamp.location}</div>
                                     <div className="stamp-building">{stamp.building}</div>
-                                    <div className="stamp-check-badge">✓</div>
+                                    <div className="stamp-check-badge">✔</div>
                                 </div>
                             ))}
                         </div>
@@ -273,10 +314,10 @@ const Home = () => {
                                     <button 
                                         type="submit"
                                         className="submit-button"
-                                        disabled={collectedCount < 14 || !submitForm.name || !submitForm.studentId}
+                                        disabled={collectedCount < 15}
                                     >
-                                        {collectedCount < 14 
-                                            ? `스탬프를 더 모아주세요 (${collectedCount}/14)` 
+                                        {collectedCount < 15
+                                            ? `스탬프를 더 모아주세요 (${collectedCount}/15)` 
                                             : '완주 인증 제출하기 🎉'}
                                     </button>
                                 </form>
