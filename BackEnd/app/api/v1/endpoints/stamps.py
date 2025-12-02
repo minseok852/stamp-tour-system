@@ -83,7 +83,7 @@ def scan_qr_and_collect_stamp(
         float(booth.longitude)
     )
     
-    if distance > 5.0:
+    if distance > 50000.0: #5미터를 원할땐 5.0
         raise HTTPException(
             status_code=400,
             detail=f"부스로부터 {distance:.1f}m 떨어져 있습니다. 5m 이내에서 스캔해주세요."
