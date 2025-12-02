@@ -7,6 +7,16 @@ import { isAuthenticated,getCurrentUser,logout } from '../../services/authApi';
 import { getAllBooths } from '../../services/boothApi';
 import { getMyStamps } from '../../services/stampApi';
 
+// ✨ Vite용 동적 이미지 로드 - 모든 스탬프 이미지를 미리 로드
+const stampImages = import.meta.glob('../../assets/images/stamps/stamp_*.png', { eager: true });
+
+// 이미지 경로를 ID로 매핑하는 함수
+const getStampImage = (id) => {
+    // glob 결과에서 해당 ID의 이미지 찾기
+    const key = Object.keys(stampImages).find(k => k.includes(`stamp_${id}.png`));
+    return key ? stampImages[key].default : null;
+};
+
 const { useState, useRef, useEffect } = React;
  
 const Home = () => {
@@ -291,13 +301,8 @@ const Home = () => {
                         {/* Stamp Grid */}
                         <div className="stamp-grid">
                             {stamps.map(stamp => {
-                                // ✨ 동적으로 이미지 경로 생성
-                                let stampImage = null;
-                                try {
-                                    stampImage = require(`../assets/images/stamps/stamp_${stamp.id}.png`);
-                                } catch (e) {
-                                    stampImage = null;
-                                }
+                                // ✨ Vite용 동적 이미지 로드
+                                const stampImage = getStampImage(stamp.id);
 
                                 return (
                                     <div 
