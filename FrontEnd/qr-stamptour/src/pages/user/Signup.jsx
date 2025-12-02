@@ -1,8 +1,11 @@
 //이건 회원가입 페이지로 사용자 아이디, 비번, 이름 등 입력 받는 회원가입 홈페이지
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { checkStudentId, registerUser } from '../../services/authApi';
 import '../../styles/Signupmodal.css'; 
 
 const Signup = ({ isOpen, onClose, onSignupComplete }) => {
+  const navigate = useNavigate();
   const [signupStep, setSignupStep] = useState(1);
   const [signupForm, setSignupForm] = useState({
     studentId: '',
@@ -17,76 +20,61 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
     gender: '',
     name: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
   // 학번 중복 확인
-  const checkStudentId = async () => {
+  const checkStudentIdHandler = async () => {
     if (signupForm.studentId.length < 8) {
       alert('학번은 8자리 이상이어야 합니다.');
       return;
     }
 
+    setLoading(true);
+    setError('');
+
     try {
-      // TODO: 실제 API 호출
-      // const response = await fetch('/api/check-student-id', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ studentId: signupForm.studentId })
-      // });
-      // const data = await response.json();
+      const result = await checkStudentId(signupForm.studentId);
       
-      // 임시 처리
-      setSignupForm({ ...signupForm, studentIdChecked: true });
-      alert('사용 가능한 학번입니다!');
+      if (result.available) {
+        setSignupForm({ ...signupForm, studentIdChecked: true });
+        alert('사용 가능한 학번입니다!');
+      } else {
+        alert(result.message || '이미 사용 중인 학번입니다.');
+      }
     } catch (error) {
-      alert('중복 확인 중 오류가 발생했습니다.');
+      //console.error('중복 확인 실패:', error);
+      alert('학번 중복 확인 중 오류가 발생했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 인증번호 발송
+  // 인증번호 발송 (더미 - 자동 통과)
   const sendVerificationCode = async () => {
     if (signupForm.phone.length < 10) {
       alert('올바른 전화번호를 입력해주세요.');
       return;
     }
 
-    try {
-      // TODO: 실제 SMS API 호출
-      // const response = await fetch('/api/send-verification', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ phone: signupForm.phone })
-      // });
-      
-      alert('인증번호가 발송되었습니다!');
-    } catch (error) {
-      alert('인증번호 발송 중 오류가 발생했습니다.');
-    }
+    alert('인증번호가 발송되었습니다! (테스트: 123456 입력)');
   };
 
-  // 전화번호 인증
+  // 전화번호 인증 (더미 - 123456으로 고정)
   const verifyPhone = async () => {
     if (signupForm.verificationCode.length !== 6) {
       alert('6자리 인증번호를 입력해주세요.');
       return;
     }
 
-    try {
-      // TODO: 실제 API 호출
-      // const response = await fetch('/api/verify-phone', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ 
-      //     phone: signupForm.phone,
-      //     code: signupForm.verificationCode 
-      //   })
-      // });
-      
+    // 테스트용: 123456이면 통과
+    if (signupForm.verificationCode === '123456') {
       setSignupForm({ ...signupForm, phoneVerified: true });
       alert('전화번호 인증이 완료되었습니다!');
-    } catch (error) {
-      alert('인증번호가 올바르지 않습니다.');
+    } else {
+      alert('인증번호가 올바르지 않습니다. (테스트: 123456)');
     }
   };
 
@@ -143,15 +131,22 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
 
   // 회원가입 완료
   const handleSignupComplete = async () => {
-    try {
-      // TODO: 실제 API 호출
-      // const response = await fetch('/api/signup', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(signupForm)
-      // });
-      // const data = await response.json();
+    setLoading(true);
+    setError('');
 
+    try {
+      // API 호출
+      const response = await registerUser({
+        studentId: signupForm.studentId,
+        password: signupForm.password,
+        name: signupForm.name,
+        phone: signupForm.phone,
+        department: signupForm.department,
+        grade: signupForm.grade,
+        gender: signupForm.gender
+      });
+
+      //console.log('회원가입 성공:', response);
       setSignupStep(5);
       
       setTimeout(() => {
@@ -174,10 +169,18 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
         if (onSignupComplete) {
           onSignupComplete(signupForm);
         }
+        
+        // 로그인 페이지로 이동
         onClose();
+        navigate('/login');
       }, 2000);
     } catch (error) {
-      alert('회원가입 중 오류가 발생했습니다.');
+      //console.error('회원가입 실패:', error);
+      const errorMessage = error.response?.data?.detail || '회원가입 중 오류가 발생했습니다.';
+      setError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -187,6 +190,21 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content signup-modal-content" onClick={(e) => e.stopPropagation()}>
         <button className="modal-close" onClick={onClose}>×</button>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="error-banner" style={{
+            background: '#fee',
+            color: '#c00',
+            padding: '12px',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            fontSize: '0.9rem',
+            fontWeight: '600'
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
 
         {/* Progress Steps */}
         <div className="signup-steps">
@@ -224,15 +242,16 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
                     value={signupForm.studentId}
                     onChange={(e) => setSignupForm({ ...signupForm, studentId: e.target.value, studentIdChecked: false })}
                     maxLength="8"
+                    disabled={loading}
                   />
                 </div>
                 <button 
                   type="button"
                   className={`check-button ${signupForm.studentIdChecked ? 'verified' : ''}`}
-                  onClick={checkStudentId}
-                  disabled={signupForm.studentIdChecked}
+                  onClick={checkStudentIdHandler}
+                  disabled={signupForm.studentIdChecked || loading}
                 >
-                  {signupForm.studentIdChecked ? '✓ 확인완료' : '중복확인'}
+                  {loading ? '확인중...' : signupForm.studentIdChecked ? '✓ 확인완료' : '중복확인'}
                 </button>
               </div>
             </div>
@@ -247,6 +266,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
                   placeholder="이름을 입력하세요"
                   value={signupForm.name}
                   onChange={(e) => setSignupForm({ ...signupForm, name: e.target.value })}
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -331,7 +351,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
             </div>
 
             <div className="login-input-group">
-              <label className="login-label">인증번호</label>
+              <label className="login-label">인증번호 (테스트: 123456)</label>
               <div className="input-with-button">
                 <div style={{ position: 'relative', flex: 1 }}>
                   <span className="login-input-icon">🔢</span>
@@ -377,6 +397,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
                   className="login-input"
                   value={signupForm.department}
                   onChange={(e) => setSignupForm({ ...signupForm, department: e.target.value })}
+                  disabled={loading}
                 >
                   <option value="">학과를 선택하세요</option>
                   <option value="컴퓨터공학과">컴퓨터공학과</option>
@@ -431,6 +452,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
                     className="login-input"
                     value={signupForm.grade}
                     onChange={(e) => setSignupForm({ ...signupForm, grade: e.target.value })}
+                    disabled={loading}
                   >
                     <option value="">학년 선택</option>
                     <option value="1">1학년</option>
@@ -453,6 +475,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
                     value="male"
                     checked={signupForm.gender === 'male'}
                     onChange={(e) => setSignupForm({ ...signupForm, gender: e.target.value })}
+                    disabled={loading}
                   />
                   <label htmlFor="male" className="radio-label">남성</label>
                 </div>
@@ -464,6 +487,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
                     value="female"
                     checked={signupForm.gender === 'female'}
                     onChange={(e) => setSignupForm({ ...signupForm, gender: e.target.value })}
+                    disabled={loading}
                   />
                   <label htmlFor="female" className="radio-label">여성</label>
                 </div>
@@ -494,6 +518,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
                 type="button"
                 className="signup-nav-button prev"
                 onClick={() => setSignupStep(signupStep - 1)}
+                disabled={loading}
               >
                 ← 이전
               </button>
@@ -503,13 +528,14 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
               className="signup-nav-button next"
               onClick={handleNext}
               disabled={
+                loading ||
                 (signupStep === 1 && (!signupForm.studentIdChecked || !signupForm.name)) ||
                 (signupStep === 2 && (!signupForm.password || !signupForm.passwordConfirm)) ||
                 (signupStep === 3 && !signupForm.phoneVerified) ||
                 (signupStep === 4 && (!signupForm.department || !signupForm.grade || !signupForm.gender))
               }
             >
-              {signupStep === 4 ? '가입완료 →' : '다음 →'}
+              {loading ? '처리중...' : signupStep === 4 ? '가입완료 →' : '다음 →'}
             </button>
           </div>
         )}

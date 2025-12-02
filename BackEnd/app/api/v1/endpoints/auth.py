@@ -15,7 +15,25 @@ from app.core.config import settings
 router = APIRouter()
 
 # OAuth2 설정 (JWT 토큰 인증)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+
+
+# 학번 중복 확인 API
+@router.get("/check-student-id/{student_id}")
+def check_student_id(
+    student_id: str,
+    db: Session = Depends(get_db)
+):
+    """
+    학번 중복 여부를 확인합니다.
+    사용 가능하면 {"available": true}, 중복이면 {"available": false} 반환
+    """
+    db_user = db.query(User).filter(User.student_id == student_id).first()
+    
+    if db_user:
+        return {"available": False, "message": "이미 사용 중인 학번입니다."}
+    
+    return {"available": True, "message": "사용 가능한 학번입니다."}
 
 # 회원가입 API
 @router.post("/register", response_model=UserResponse)
@@ -104,7 +122,64 @@ def login_user(
             "student_id": user.student_id,
             "name": user.name,
             "dept_name": user.dept_name,
-            "grade": user.grade
+            "grade": user.grade,
+            "role": user.role
+        }
+    }
+
+
+# OAuth2 호환 로그인 (Swagger UI용)
+@router.post("/token", response_model=Token)
+def login_for_swagger(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    """
+    OAuth2 호환 로그인 (Swagger UI의 [Authorize] 버튼용)
+    
+    form-data 형식:
+    - username: 학번
+    - password: 비밀번호
+    """
+    # 1. 학번으로 사용자 조회 (username 필드에 학번이 들어옴)
+    user = db.query(User).filter(User.student_id == form_data.username).first()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="학번 또는 비밀번호가 올바르지 않습니다.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # 2. 비밀번호 검증
+    if not verify_password(form_data.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="학번 또는 비밀번호가 올바르지 않습니다.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # 3. JWT 토큰 생성
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={
+            "sub": user.student_id,
+            "name": user.name,
+            "dept_name": user.dept_name
+        },
+        expires_delta=access_token_expires
+    )
+
+    # 4. 토큰 반환
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "student_id": user.student_id,
+            "name": user.name,
+            "dept_name": user.dept_name,
+            "grade": user.grade,
+            "role": user.role
         }
     }
 

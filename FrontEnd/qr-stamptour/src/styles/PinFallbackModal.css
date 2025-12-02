@@ -1,0 +1,59 @@
+/* PinFallbackModal.css */
+
+.pin-fallback.modal-content {
+    max-width: 500px;
+}
+
+.pin-fallback .form-group {
+    margin-bottom: 24px;
+}
+
+.pin-fallback select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-sizing: border-box;
+}
+
+.pin-fallback select:focus {
+    outline: none;
+    border-color: #0D4E8C;
+    box-shadow: 0 0 0 3px rgba(13, 78, 140, 0.1);
+}
+
+.pin-fallback select:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.pin-fallback .pin-input {
+    text-align: center;
+    font-size: 2rem;
+    letter-spacing: 10px;
+    font-weight: 600;
+    width: 100%;
+    padding: 20px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    transition: all 0.3s;
+    box-sizing: border-box;
+}
+
+.pin-fallback .pin-input:focus {
+    outline: none;
+    border-color: #0D4E8C;
+    box-shadow: 0 0 0 3px rgba(13, 78, 140, 0.1);
+}
+
+.pin-fallback .help-text {
+    text-align: center;
+    margin-top: 20px;
+    color: #666;
+    font-size: 0.85rem;
+    line-height: 1.8;
+}
