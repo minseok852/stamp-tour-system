@@ -1,4 +1,4 @@
-// Home.jsx - 내 스탬프 API 연동 버전
+// Home.jsx - 스탬프 이미지 표시 수정 버전
 import React from 'react';
 import '../../styles/Home.css'; 
 import frontImage from '../../assets/images/앞화면.png';
@@ -286,25 +286,58 @@ const Home = () => {
                             </div>
                         </div>
 
+                        
+
                         {/* Stamp Grid */}
                         <div className="stamp-grid">
-                            {stamps.map(stamp => (
-                                <div 
-                                    key={stamp.id}
-                                    className={`stamp-card ${stamp.collected ? 'collected' : ''}`}
-                                    onClick={() => handleStampClick(stamp.id)}
-                                >
-                                    <div className="stamp-icon-wrapper">
-                                        <div className="stamp-circle">
-                                            <div className="stamp-icon">{stamp.icon}</div>
-                                            <div className="stamp-logo-text">DAEJIN<br/>UNIVERSITY</div>
-                                        </div>
+                            {stamps.map(stamp => {
+                                // ✨ 동적으로 이미지 경로 생성
+                                let stampImage = null;
+                                try {
+                                    stampImage = require(`../assets/images/stamps/stamp_${stamp.id}.png`);
+                                } catch (e) {
+                                    stampImage = null;
+                                }
+
+                                return (
+                                    <div 
+                                        key={stamp.id}
+                                        className={`stamp-card ${stamp.collected ? 'collected' : ''}`}
+                                        onClick={() => handleStampClick(stamp.id)}
+                                    >
+                                        {/* ✅ 핵심 수정: 수집 여부에 따라 완전히 다른 구조 렌더링 */}
+                                        {stamp.collected && stampImage ? (
+                                            // 🎯 수집 완료 + 이미지 있음: 이미지 중심 레이아웃
+                                            <>
+                                                <div className="stamp-collected-content">
+                                                    <img 
+                                                        src={stampImage}
+                                                        alt={stamp.location}
+                                                        className="stamp-image-collected"
+                                                    />
+                                                </div>
+                                                <div className="stamp-info-collected">
+                                                    <div className="stamp-location">{stamp.location}</div>
+                                                    <div className="stamp-building">{stamp.building}</div>
+                                                </div>
+                                                <div className="stamp-check-badge">✔</div>
+                                            </>
+                                        ) : (
+                                            // 🔘 미수집: 기존 아이콘 디자인
+                                            <>
+                                                <div className="stamp-icon-wrapper">
+                                                    <div className="stamp-circle">
+                                                        <div className="stamp-icon">{stamp.icon}</div>
+                                                        <div className="stamp-logo-text">DAEJIN<br/>UNIVERSITY</div>
+                                                    </div>
+                                                </div>
+                                                <div className="stamp-location">{stamp.location}</div>
+                                                <div className="stamp-building">{stamp.building}</div>
+                                            </>
+                                        )}
                                     </div>
-                                    <div className="stamp-location">{stamp.location}</div>
-                                    <div className="stamp-building">{stamp.building}</div>
-                                    <div className="stamp-check-badge">✔</div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* Submit Form */}

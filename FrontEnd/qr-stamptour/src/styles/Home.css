@@ -892,3 +892,237 @@
             color: #cbd5e0;
             font-size: 0.8rem;
         }
+/* Home.css - 스탬프 이미지 크게 표시 (기존 스타일 대체) */
+
+/* 스탬프 이미지 래퍼 - 카드 전체 사용 */
+.stamp-image-wrapper-large {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: white;
+    border-radius: 16px;
+    overflow: visible;
+    z-index: 5;
+}
+
+/* 스탬프 이미지 - 크게 표시 */
+.stamp-image-large {
+    max-width: 140%;
+    max-height: 140%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.2));
+    animation: stampAppearLarge 0.6s ease-out;
+    position: relative;
+    z-index: 6;
+}
+
+/* 스탬프 등장 애니메이션 - 강화 */
+@keyframes stampAppearLarge {
+    0% {
+        opacity: 0;
+        transform: scale(0.5) rotate(-15deg);
+    }
+    50% {
+        transform: scale(1.15) rotate(5deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* 수집된 카드 - 스타일 강화 */
+.stamp-card.collected {
+    position: relative;
+    background: white;
+    border: 4px solid #0D4E8C;
+    box-shadow: 0 12px 32px rgba(13, 78, 140, 0.35);
+    transform: translateY(-6px);
+}
+
+.stamp-card.collected:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 16px 40px rgba(13, 78, 140, 0.45);
+}
+
+/* 스탬프 카드 위치 조정 */
+.stamp-card {
+    position: relative;
+    overflow: visible !important;
+}
+
+/* 텍스트는 앞으로 */
+.stamp-card.collected .stamp-location,
+.stamp-card.collected .stamp-building {
+    position: relative;
+    z-index: 10;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin-top: 8px;
+}
+
+/* 체크 배지 - 더 크게 */
+.stamp-card.collected .stamp-check-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 48px;
+    height: 48px;
+    background: #0D4E8C;
+    color: white;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    font-weight: bold;
+    box-shadow: 0 6px 20px rgba(13, 78, 140, 0.5);
+    z-index: 15;
+    border: 4px solid white;
+}
+
+/* 미수집 카드는 체크 배지 숨김 */
+.stamp-card:not(.collected) .stamp-check-badge {
+    display: none;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .stamp-image-large {
+        max-width: 130%;
+        max-height: 130%;
+    }
+    
+    .stamp-card.collected .stamp-check-badge {
+        width: 40px;
+        height: 40px;
+        font-size: 1.3rem;
+    }
+}
+
+/* ============================================
+   Home.css 맨 아래에 추가할 스타일
+   (기존 CSS 파일 맨 아래에 이 내용을 붙여넣으세요)
+   ============================================ */
+
+/* ========== 수집된 스탬프 카드 스타일 (새로운 버전) ========== */
+
+/* 수집된 카드 - 배경을 흰색으로, 파란 테두리 */
+.stamp-card.collected {
+    background: #ffffff !important;  /* 파란 그라데이션 대신 흰색 */
+    border: 4px solid #0D4E8C !important;
+    box-shadow: 0 12px 35px rgba(13, 78, 140, 0.25);
+    overflow: visible;
+}
+
+.stamp-card.collected:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 18px 45px rgba(13, 78, 140, 0.35);
+}
+
+/* 수집된 스탬프 이미지 컨테이너 */
+.stamp-collected-content {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 10px;
+    min-height: 140px;
+}
+
+/* 수집된 스탬프 이미지 */
+.stamp-image-collected {
+    max-width: 120px;
+    max-height: 120px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 4px 12px rgba(13, 78, 140, 0.3));
+    animation: stampBounce 0.5s ease-out;
+}
+
+/* 수집된 스탬프 정보 영역 */
+.stamp-info-collected {
+    text-align: center;
+    margin-top: 10px;
+}
+
+.stamp-info-collected .stamp-location {
+    color: #0D4E8C !important;  /* 파란색 글자 */
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.stamp-info-collected .stamp-building {
+    color: #4a5568 !important;  /* 회색 글자 */
+    font-size: 0.9rem;
+}
+
+/* 체크 배지 - 우측 상단 */
+.stamp-card.collected .stamp-check-badge {
+    display: flex !important;
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 42px;
+    height: 42px;
+    background: #0D4E8C;
+    color: white;
+    border-radius: 50%;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.4rem;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(13, 78, 140, 0.5);
+    border: 3px solid white;
+    z-index: 10;
+    animation: checkPop 0.4s ease-out;
+}
+
+/* 스탬프 등장 애니메이션 */
+@keyframes stampBounce {
+    0% {
+        opacity: 0;
+        transform: scale(0.3) rotate(-10deg);
+    }
+    60% {
+        transform: scale(1.1) rotate(3deg);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .stamp-collected-content {
+        min-height: 100px;
+    }
+    
+    .stamp-image-collected {
+        max-width: 90px;
+        max-height: 90px;
+    }
+    
+    .stamp-info-collected .stamp-location {
+        font-size: 1rem;
+    }
+    
+    .stamp-card.collected .stamp-check-badge {
+        width: 36px;
+        height: 36px;
+        font-size: 1.2rem;
+        top: -8px;
+        right: -8px;
+    }
+}
