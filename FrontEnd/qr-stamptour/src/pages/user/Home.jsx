@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { isAuthenticated,getCurrentUser,logout } from '../../services/authApi';
 import { getAllBooths } from '../../services/boothApi';
 import { getMyStamps } from '../../services/stampApi';
+import KakaoMap from '../../components/KakaoMap';  // ✨ 카카오맵 추가
 
 // ✨ Vite용 동적 이미지 로드 - 모든 스탬프 이미지를 미리 로드
 const stampImages = import.meta.glob('../../assets/images/stamps/stamp_*.png', { eager: true });
@@ -26,6 +27,10 @@ const Home = () => {
     const [user, setUser] = useState(null);
     const [submitForm, setSubmitForm] = useState({ name: '', studentId: '' });
     const [loading, setLoading]=useState(true);
+
+    // ✨ 지도 관련 상태 추가
+    const [selectedBooth, setSelectedBooth] = useState(null);  // 선택된 부스 정보
+    const [congestionData, setCongestionData] = useState({});  // 부스별 혼잡도 데이터
 
     const stampSectionRef = useRef(null);
 
@@ -98,6 +103,32 @@ const Home = () => {
         
         loadMyStamps();
     }, [isLoggedIn, stamps.length]); // isLoggedIn이나 stamps가 변경되면 실행
+
+    // ✨ 혼잡도 데이터 로드 (30초마다 갱신)
+    useEffect(() => {
+        const loadCongestion = async () => {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/v1/congestion');
+                if (response.ok) {
+                    const data = await response.json();
+                    setCongestionData(data);
+                }
+            } catch (error) {
+                // 혼잡도 로드 실패 시 테스트 데이터 사용
+                const testData = {};
+                stamps.forEach(s => {
+                    testData[s.id] = Math.floor(Math.random() * 20);
+                });
+                setCongestionData(testData);
+            }
+        };
+
+        if (stamps.length > 0) {
+            loadCongestion();
+            const interval = setInterval(loadCongestion, 30000); // 30초마다 갱신
+            return () => clearInterval(interval);
+        }
+    }, [stamps.length]);
 
     // 로딩 화면
     if(loading){
@@ -373,6 +404,69 @@ const Home = () => {
                                 </button>
                             </div>
                         )}
+
+                        {/* ✨ 카카오맵 섹션 */}
+                        <div className="map-section">
+                            <div className="map-header-box">
+                                <h2 className="map-title">🗺️ 캠퍼스 지도</h2>
+                                <p className="map-subtitle">부스 위치와 실시간 혼잡도를 확인하세요</p>
+                            </div>
+
+                            {/* 혼잡도 범례 */}
+                            <div className="congestion-legend">
+                                <div className="legend-item">
+                                    <span className="legend-dot" style={{background: '#48BB78'}}></span>
+                                    <span>여유 (0~5명)</span>
+                                </div>
+                                <div className="legend-item">
+                                    <span className="legend-dot" style={{background: '#F6AD55'}}></span>
+                                    <span>보통 (6~15명)</span>
+                                </div>
+                                <div className="legend-item">
+                                    <span className="legend-dot" style={{background: '#E53E3E'}}></span>
+                                    <span>혼잡 (16명+)</span>
+                                </div>
+                            </div>
+
+                            {/* 선택된 부스 정보 */}
+                            {selectedBooth && (
+                                <div className="selected-booth-panel">
+                                    <div className="selected-booth-info">
+                                        <span className="booth-icon">{selectedBooth.icon}</span>
+                                        <div className="booth-details">
+                                            <div className="booth-name">{selectedBooth.location}</div>
+                                            <div className="booth-building">{selectedBooth.building}</div>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        className="close-panel-btn"
+                                        onClick={() => setSelectedBooth(null)}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* 카카오맵 */}
+                            <KakaoMap 
+                                markers={stamps.map(s => ({
+                                    id: s.id,
+                                    name: s.location,
+                                    lat: s.lat,
+                                    lng: s.lng,
+                                    icon: s.icon,
+                                    congestion: congestionData[s.id] || 0
+                                }))}
+                                onMarkerClick={(marker) => {
+                                    const booth = stamps.find(s => s.id === marker.id);
+                                    if (booth) {
+                                        setSelectedBooth(booth);
+                                    }
+                                }}
+                                showCongestion={true}
+                                height="450px"
+                            />
+                        </div>
                     </div>
                 </section>
             )}
