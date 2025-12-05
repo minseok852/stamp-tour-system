@@ -34,6 +34,10 @@ const Home = () => {
 
     const stampSectionRef = useRef(null);
 
+     // ✨ 드롭다운 메뉴 상태 추가
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const profileMenuRef = useRef(null);
+
     // 로그인 상태 확인
     useEffect(() => {
         const checkAuth = () => {
@@ -47,7 +51,18 @@ const Home = () => {
     }, []);
 
     const [stamps, setStamps] = useState([]);
-    
+    //프로필 클릭 시 닫기
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+                setShowProfileMenu(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     // 부스 목록 불러오기
     useEffect(() => {
         const loadBooths = async () => {
@@ -156,7 +171,7 @@ const Home = () => {
         stampSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // ✨ 수정: 스탬프 클릭 동작 변경
+    // 스탬프 클릭 동작 변경
     const handleStampClick = (id) => {
         if (!isLoggedIn) {
             alert('로그인이 필요합니다!');
@@ -172,9 +187,16 @@ const Home = () => {
         logout();
         setIsLoggedIn(false);
         setUser(null);
+        setShowProfileMenu(false);
         // 스탬프 초기화
         setStamps(stamps.map(stamp => ({ ...stamp, collected: false })));
         alert('로그아웃되었습니다.');
+    };
+
+    //관리자 페이지 이동 함수
+    const handleAdminPage = () => {
+        setShowProfileMenu(false); // 메뉴 닫기
+        navigate('/admin/dashboard');
     };
 
     const handleSubmit = (e) => {
@@ -187,6 +209,9 @@ const Home = () => {
         // 실제로는 완주 제출 API 호출
         // submitCompletion(submitForm);
     };
+
+    //관리자 여부 확인
+    const isAdmin = user?.role === 'admin' || user?.is_admin === true;
 
     return (
         <>
@@ -219,8 +244,44 @@ const Home = () => {
                                     🏆 {collectedCount}/{stamps.length} 스탬프
                                 </div>
                             </div>
-                            <div className="user-avatar" onClick={handleLogout}>
-                                {user?.name?.charAt(0)}
+                            {/* ✅ 드롭다운 컨테이너 - 메뉴가 안에 있어야 함 */}
+                            <div 
+                                className="profile-dropdown-container" 
+                                ref={profileMenuRef} 
+                            >
+                                <div 
+                                    className="user-avatar" 
+                                    onClick={() => setShowProfileMenu(prev => !prev)}
+                                >
+                                    {user?.name?.charAt(0)}
+                                </div>
+                                
+                                {/* ✅ 드롭다운 메뉴 - 컨테이너 안에 위치 */}
+                                {showProfileMenu && (
+                                    <div className="profile-dropdown-menu">
+                                        <div className="dropdown-header">
+                                            <div className="dropdown-user-name">{user?.name}</div>
+                                            <div className="dropdown-user-id">{user?.student_id}</div>
+                                        </div>
+                                        <div className="dropdown-divider"></div>
+                                        {isAdmin && (
+                                            <div 
+                                                className="dropdown-item admin"
+                                                onClick={handleAdminPage}
+                                            >
+                                                <span className="dropdown-icon">📊</span>
+                                                관리자 페이지
+                                            </div>
+                                        )}
+                                        <div 
+                                            className="dropdown-item logout"
+                                            onClick={handleLogout}
+                                        >
+                                            <span className="dropdown-icon">🚪</span>
+                                            로그아웃
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </>
                     ) : (
@@ -263,12 +324,68 @@ const Home = () => {
                 </div>
                 <div 
                     className={`bottom-nav-item ${currentPage === 'profile' ? 'active' : ''}`}
-                    onClick={() => isLoggedIn ? setCurrentPage('profile') : navigate('/login')}
+                    onClick={() => isLoggedIn ? setShowProfileMenu(true) : navigate('/login')}
                 >
                     <div className="bottom-nav-icon">👤</div>
                     <div className="bottom-nav-label">내 정보</div>
                 </div>
             </nav>
+
+            {/* ✨ 모바일용 프로필 메뉴 (하단에서 슬라이드) */}
+            {showProfileMenu && isLoggedIn && (
+                <div className="mobile-profile-overlay" onClick={() => setShowProfileMenu(false)}>
+                    <div 
+                        className="mobile-profile-menu"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="mobile-menu-header">
+                            <div className="mobile-user-avatar">
+                                {user?.name?.charAt(0)}
+                            </div>
+                            <div className="mobile-user-info">
+                                <div className="mobile-user-name">{user?.name}</div>
+                                <div className="mobile-user-id">{user?.student_id}</div>
+                            </div>
+                            <button 
+                                className="mobile-menu-close"
+                                onClick={() => setShowProfileMenu(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="mobile-menu-stats">
+                            <div className="mobile-stat">
+                                <div className="mobile-stat-value">{collectedCount}</div>
+                                <div className="mobile-stat-label">획득 스탬프</div>
+                            </div>
+                            <div className="mobile-stat">
+                                <div className="mobile-stat-value">{stamps.length - collectedCount}</div>
+                                <div className="mobile-stat-label">남은 스탬프</div>
+                            </div>
+                        </div>
+                        <div className="mobile-menu-items">
+                            {isAdmin && (
+                                <div 
+                                    className="mobile-menu-item admin"
+                                    onClick={handleAdminPage}
+                                >
+                                    <span className="mobile-menu-icon">📊</span>
+                                    <span>관리자 페이지</span>
+                                    <span className="mobile-menu-arrow">›</span>
+                                </div>
+                            )}
+                            <div 
+                                className="mobile-menu-item logout"
+                                onClick={handleLogout}
+                            >
+                                <span className="mobile-menu-icon">🚪</span>
+                                <span>로그아웃</span>
+                                <span className="mobile-menu-arrow">›</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Hero Section */}
             {currentPage === 'home' && (
