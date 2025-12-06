@@ -1,9 +1,10 @@
 // src/pages/admin/UserManage.jsx
-// 사용자 관리 페이지 - 검색, 스탬프 부여, CSV 다운로드
+// 사용자 관리 페이지 - 백엔드 연동 버전
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { logout } from '../../services/authApi';
+import { logout, getCurrentUser } from '../../services/authApi';
 import { getAllBooths } from '../../services/boothApi';
+import { getAllUsers, grantStamp } from '../../services/adminApi';
 import '../../styles/UserManage.css';
 
 const UserManage = () => {
@@ -27,14 +28,65 @@ const UserManage = () => {
     const [selectedBooth, setSelectedBooth] = useState(null);
     const [stampReason, setStampReason] = useState('');
     
-    // 로딩
+    // 로딩 및 인증
     const [loading, setLoading] = useState(true);
+    const [authChecked, setAuthChecked] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
-    // 데이터 로드
+    // 인증 체크
     useEffect(() => {
-        fetchData();
+        checkAuth();
     }, []);
 
+    const checkAuth = async () => {
+        const token = localStorage.getItem('access_token');
+        const userStr = localStorage.getItem('user');
+        
+        if (!token) {
+            alert('로그인이 필요합니다.');
+            navigate('/login');
+            return;
+        }
+
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                if (user.role !== 'admin') {
+                    alert('관리자 권한이 필요합니다.');
+                    navigate('/');
+                    return;
+                }
+            } catch (e) {
+                console.error('사용자 정보 파싱 실패:', e);
+            }
+        }
+
+        try {
+            await getCurrentUser();
+            setAuthChecked(true);
+            fetchData();
+        } catch (error) {
+            console.error('토큰 검증 실패:', error);
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+            alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+            navigate('/login');
+        }
+    };
+
+    // 401 에러 처리
+    const handleAuthError = (error) => {
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+            alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+            navigate('/login');
+            return true;
+        }
+        return false;
+    };
+
+    // 데이터 로드
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -42,90 +94,14 @@ const UserManage = () => {
             const boothsData = await getAllBooths();
             setBooths(boothsData);
 
-            // 사용자 데이터 로드 (TODO: 실제 API 연동)
-            // const usersResponse = await fetch('http://127.0.0.1:8000/api/v1/admin/users');
-            // const usersData = await usersResponse.json();
-            
-            // 테스트 데이터
-            const testUsers = [
-                { 
-                    student_id: '20231001', 
-                    name: '홍길동', 
-                    dept_name: '컴퓨터공학과',
-                    grade: 3,
-                    phone_number: '010-1234-5678',
-                    stamps: [1, 2, 3, 5, 7, 9, 11, 13, 15],
-                    created_at: '2025-12-01 09:30'
-                },
-                { 
-                    student_id: '20231002', 
-                    name: '김철수', 
-                    dept_name: '전자공학과',
-                    grade: 2,
-                    phone_number: '010-2345-6789',
-                    stamps: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-                    created_at: '2025-12-01 10:15'
-                },
-                { 
-                    student_id: '20231003', 
-                    name: '이영희', 
-                    dept_name: '경영학과',
-                    grade: 4,
-                    phone_number: '010-3456-7890',
-                    stamps: [1, 3, 5],
-                    created_at: '2025-12-02 11:20'
-                },
-                { 
-                    student_id: '20231004', 
-                    name: '박민수', 
-                    dept_name: '국어국문학과',
-                    grade: 1,
-                    phone_number: '010-4567-8901',
-                    stamps: [2, 4, 6, 8, 10, 12],
-                    created_at: '2025-12-02 14:45'
-                },
-                { 
-                    student_id: '20231005', 
-                    name: '정수진', 
-                    dept_name: '화학과',
-                    grade: 3,
-                    phone_number: '010-5678-9012',
-                    stamps: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-                    created_at: '2025-12-03 09:00'
-                },
-                { 
-                    student_id: '20231006', 
-                    name: '최동현', 
-                    dept_name: '물리학과',
-                    grade: 2,
-                    phone_number: '010-6789-0123',
-                    stamps: [1],
-                    created_at: '2025-12-03 16:30'
-                },
-                { 
-                    student_id: '20231007', 
-                    name: '강서연', 
-                    dept_name: '간호학과',
-                    grade: 4,
-                    phone_number: '010-7890-1234',
-                    stamps: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                    created_at: '2025-12-04 10:00'
-                },
-                { 
-                    student_id: '20231008', 
-                    name: '윤지호', 
-                    dept_name: '건축학과',
-                    grade: 3,
-                    phone_number: '010-8901-2345',
-                    stamps: [],
-                    created_at: '2025-12-04 13:15'
-                },
-            ];
-            
-            setUsers(testUsers);
-            setFilteredUsers(testUsers);
+            // 사용자 데이터 로드
+            const usersData = await getAllUsers();
+            setUsers(usersData);
+            setFilteredUsers(usersData);
         } catch (error) {
-            console.error('데이터 로드 실패:', error);
+            if (!handleAuthError(error)) {
+                console.error('데이터 로드 실패:', error);
+            }
         } finally {
             setLoading(false);
         }
@@ -152,9 +128,9 @@ const UserManage = () => {
 
         // 상태 필터
         if (filterStatus === 'completed') {
-            result = result.filter(user => user.stamps.length >= 15);
+            result = result.filter(user => user.stamp_count >= 15 || user.is_completed);
         } else if (filterStatus === 'inProgress') {
-            result = result.filter(user => user.stamps.length < 15);
+            result = result.filter(user => user.stamp_count < 15 && !user.is_completed);
         }
 
         setFilteredUsers(result);
@@ -162,83 +138,76 @@ const UserManage = () => {
 
     // 사용자 선택
     const handleSelectUser = (user) => {
-        setSelectedUser(selectedUser?.student_id === user.student_id ? null : user);
+        if (selectedUser?.student_id === user.student_id) {
+            setSelectedUser(null);
+        } else {
+            setSelectedUser(user);
+        }
     };
 
     // 스탬프 부여 모달 열기
     const openStampModal = (user) => {
         setSelectedUser(user);
-        setShowStampModal(true);
         setSelectedBooth(null);
         setStampReason('');
+        setShowStampModal(true);
     };
 
-    // 스탬프 부여
+    // 스탬프 부여 처리
     const handleGrantStamp = async () => {
-        if (!selectedBooth) {
-            alert('부스를 선택해주세요.');
-            return;
-        }
-        if (!stampReason.trim()) {
-            alert('부여 사유를 입력해주세요.');
+        if (!selectedBooth || !stampReason.trim()) {
+            alert('부스를 선택하고 사유를 입력해주세요.');
             return;
         }
 
+        setSubmitting(true);
         try {
-            // TODO: 실제 API 호출
-            // await fetch('http://127.0.0.1:8000/api/v1/admin/grant-stamp', {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({
-            //         student_id: selectedUser.student_id,
-            //         booth_id: selectedBooth,
-            //         reason: stampReason
-            //     })
-            // });
-
-            // 로컬 상태 업데이트 (테스트용)
-            setUsers(prevUsers => 
-                prevUsers.map(user => 
-                    user.student_id === selectedUser.student_id
-                        ? { ...user, stamps: [...user.stamps, selectedBooth] }
-                        : user
-                )
-            );
-
-            alert(`${selectedUser.name}님에게 스탬프가 부여되었습니다.`);
+            await grantStamp(selectedUser.student_id, selectedBooth, stampReason);
+            
+            alert(`${selectedUser.name}님에게 스탬프가 부여되었습니다!`);
+            
+            // 모달 닫기 및 초기화
             setShowStampModal(false);
             setSelectedBooth(null);
             setStampReason('');
+            setSelectedUser(null);
+            
+            // 데이터 새로고침
+            fetchData();
         } catch (error) {
-            console.error('스탬프 부여 실패:', error);
-            alert('스탬프 부여에 실패했습니다.');
+            if (!handleAuthError(error)) {
+                console.error('스탬프 부여 실패:', error);
+                alert(error?.detail || '스탬프 부여에 실패했습니다.');
+            }
+        } finally {
+            setSubmitting(false);
         }
     };
 
     // CSV 다운로드
     const downloadCSV = () => {
-        const headers = ['학번', '이름', '학과', '학년', '연락처', '획득 스탬프', '완주 여부', '가입일'];
-        const rows = filteredUsers.map(user => [
-            user.student_id,
-            user.name,
-            user.dept_name,
-            user.grade,
-            user.phone_number,
-            user.stamps.length,
-            user.stamps.length >= 15 ? '완주' : '진행중',
-            user.created_at
-        ]);
+        // BOM 추가 (한글 지원)
+        let csvContent = '\uFEFF';
+        
+        // 헤더
+        csvContent += '학번,이름,학과,학년,연락처,스탬프 수,상태,가입일\n';
+        
+        // 데이터
+        filteredUsers.forEach(user => {
+            const stampCount = user.stamp_count ?? user.stamps?.length ?? 0;
+            const status = stampCount >= 15 || user.is_completed ? '완주' : '진행중';
+            const createdAt = user.created_at ? new Date(user.created_at).toLocaleDateString('ko-KR') : '-';
+            
+            csvContent += `${user.student_id},${user.name},${user.dept_name},${user.grade}학년,${user.phone_number || '-'},${stampCount},${status},${createdAt}\n`;
+        });
 
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.join(','))
-        ].join('\n');
-
-        const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        // 다운로드
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `사용자목록_${new Date().toISOString().split('T')[0]}.csv`;
+        link.download = `사용자목록_${new Date().toLocaleDateString('ko-KR')}.csv`;
         link.click();
+        URL.revokeObjectURL(link.href);
     };
 
     // 로그아웃
@@ -247,24 +216,41 @@ const UserManage = () => {
         navigate('/');
     };
 
-    // 부스 이름 가져오기
-    const getBoothName = (boothId) => {
-        const booth = booths.find(b => b.booth_id === boothId);
-        return booth ? booth.booth_name : `부스 ${boothId}`;
+    // 스탬프 수 가져오기 (API 응답 형식에 따라)
+    const getStampCount = (user) => {
+        return user.stamp_count ?? user.stamps?.length ?? 0;
     };
 
-    // 로딩 화면
+    // 스탬프 배열 가져오기
+    const getStamps = (user) => {
+        return user.stamps || [];
+    };
+
+    // 인증 체크 전
+    if (!authChecked) {
+        return (
+            <div className="user-manage-page">
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>인증 확인 중...</p>
+                </div>
+            </div>
+        );
+    }
+
     if (loading) {
         return (
-            <div className="admin-loading">
-                <div className="loading-spinner"></div>
-                <p>데이터를 불러오는 중...</p>
+            <div className="user-manage-page">
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>데이터 로딩 중...</p>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="user-manage">
+        <div className="user-manage-page">
             {/* 상단 네비게이션 */}
             <nav className="admin-nav">
                 <div className="admin-nav-left">
@@ -306,13 +292,13 @@ const UserManage = () => {
                 <div className="page-header">
                     <div className="header-left">
                         <h1 className="page-title">👥 사용자 관리</h1>
-                        <p className="page-subtitle">사용자 검색, 스탬프 현황 확인 및 관리</p>
+                        <p className="page-subtitle">
+                            전체 {users.length}명 | 필터 결과 {filteredUsers.length}명
+                        </p>
                     </div>
-                    <div className="header-right">
-                        <button className="csv-btn" onClick={downloadCSV}>
-                            📥 CSV 다운로드
-                        </button>
-                    </div>
+                    <button className="csv-btn" onClick={downloadCSV}>
+                        📥 CSV 다운로드
+                    </button>
                 </div>
 
                 {/* 검색 및 필터 */}
@@ -330,7 +316,7 @@ const UserManage = () => {
                         <input
                             type="text"
                             className="search-input"
-                            placeholder="학번 또는 이름으로 검색..."
+                            placeholder="검색어를 입력하세요..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -341,31 +327,27 @@ const UserManage = () => {
                             className={`filter-btn ${filterStatus === 'all' ? 'active' : ''}`}
                             onClick={() => setFilterStatus('all')}
                         >
-                            전체 ({users.length})
+                            전체
                         </button>
                         <button 
                             className={`filter-btn ${filterStatus === 'completed' ? 'active' : ''}`}
                             onClick={() => setFilterStatus('completed')}
                         >
-                            ✅ 완주 ({users.filter(u => u.stamps.length >= 15).length})
+                            ✅ 완주
                         </button>
                         <button 
                             className={`filter-btn ${filterStatus === 'inProgress' ? 'active' : ''}`}
                             onClick={() => setFilterStatus('inProgress')}
                         >
-                            🔄 진행중 ({users.filter(u => u.stamps.length < 15).length})
+                            🔄 진행중
                         </button>
                     </div>
                 </div>
 
-                {/* 사용자 목록 */}
+                {/* 사용자 테이블 */}
                 <div className="users-section">
-                    <div className="users-header">
-                        <span className="users-count">검색 결과: {filteredUsers.length}명</span>
-                    </div>
-
                     {filteredUsers.length > 0 ? (
-                        <div className="users-table-wrapper">
+                        <div className="table-container">
                             <table className="users-table">
                                 <thead>
                                     <tr>
@@ -380,81 +362,89 @@ const UserManage = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredUsers.map(user => (
-                                        <React.Fragment key={user.student_id}>
-                                            <tr 
-                                                className={selectedUser?.student_id === user.student_id ? 'selected' : ''}
-                                                onClick={() => handleSelectUser(user)}
-                                            >
-                                                <td className="student-id">{user.student_id}</td>
-                                                <td className="name">{user.name}</td>
-                                                <td className="dept">{user.dept_name}</td>
-                                                <td className="grade">{user.grade}학년</td>
-                                                <td className="stamps">
-                                                    <div className="stamp-progress">
-                                                        <div className="stamp-bar">
-                                                            <div 
-                                                                className="stamp-fill"
-                                                                style={{ width: `${(user.stamps.length / 15) * 100}%` }}
-                                                            ></div>
-                                                        </div>
-                                                        <span className="stamp-count">{user.stamps.length}/15</span>
-                                                    </div>
-                                                </td>
-                                                <td className="status">
-                                                    <span className={`status-badge ${user.stamps.length >= 15 ? 'completed' : 'progress'}`}>
-                                                        {user.stamps.length >= 15 ? '✅ 완주' : '🔄 진행중'}
-                                                    </span>
-                                                </td>
-                                                <td className="date">{user.created_at}</td>
-                                                <td className="actions">
-                                                    <button 
-                                                        className="action-btn stamp"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            openStampModal(user);
-                                                        }}
-                                                    >
-                                                        ➕ 스탬프
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                            
-                                            {/* 확장된 상세 정보 */}
-                                            {selectedUser?.student_id === user.student_id && (
-                                                <tr className="detail-row">
-                                                    <td colSpan="8">
-                                                        <div className="user-detail">
-                                                            <div className="detail-info">
-                                                                <div className="detail-item">
-                                                                    <span className="detail-label">📞 연락처</span>
-                                                                    <span className="detail-value">{user.phone_number}</span>
-                                                                </div>
+                                    {filteredUsers.map(user => {
+                                        const stampCount = getStampCount(user);
+                                        const stamps = getStamps(user);
+                                        const isCompleted = stampCount >= 15 || user.is_completed;
+                                        
+                                        return (
+                                            <React.Fragment key={user.student_id}>
+                                                <tr 
+                                                    className={selectedUser?.student_id === user.student_id ? 'selected' : ''}
+                                                    onClick={() => handleSelectUser(user)}
+                                                >
+                                                    <td className="student-id">{user.student_id}</td>
+                                                    <td className="name">{user.name}</td>
+                                                    <td className="dept">{user.dept_name}</td>
+                                                    <td className="grade">{user.grade}학년</td>
+                                                    <td className="stamps">
+                                                        <div className="stamp-progress">
+                                                            <div className="stamp-bar">
+                                                                <div 
+                                                                    className="stamp-fill"
+                                                                    style={{ width: `${Math.min((stampCount / 15) * 100, 100)}%` }}
+                                                                ></div>
                                                             </div>
-                                                            <div className="detail-stamps">
-                                                                <h4>🎫 획득한 스탬프</h4>
-                                                                <div className="stamp-grid">
-                                                                    {booths.map(booth => {
-                                                                        const collected = user.stamps.includes(booth.booth_id);
-                                                                        return (
-                                                                            <div 
-                                                                                key={booth.booth_id}
-                                                                                className={`stamp-item ${collected ? 'collected' : ''}`}
-                                                                            >
-                                                                                <span className="stamp-icon">{booth.icon || '📍'}</span>
-                                                                                <span className="stamp-name">{booth.booth_name}</span>
-                                                                                {collected && <span className="check">✓</span>}
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            </div>
+                                                            <span className="stamp-count">{stampCount}/15</span>
                                                         </div>
                                                     </td>
+                                                    <td className="status">
+                                                        <span className={`status-badge ${isCompleted ? 'completed' : 'progress'}`}>
+                                                            {isCompleted ? '✅ 완주' : '🔄 진행중'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="date">
+                                                        {user.created_at ? new Date(user.created_at).toLocaleDateString('ko-KR') : '-'}
+                                                    </td>
+                                                    <td className="actions">
+                                                        <button 
+                                                            className="action-btn stamp"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openStampModal(user);
+                                                            }}
+                                                        >
+                                                            ➕ 스탬프
+                                                        </button>
+                                                    </td>
                                                 </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))}
+                                                
+                                                {/* 확장된 상세 정보 */}
+                                                {selectedUser?.student_id === user.student_id && (
+                                                    <tr className="detail-row">
+                                                        <td colSpan="8">
+                                                            <div className="user-detail">
+                                                                <div className="detail-info">
+                                                                    <div className="detail-item">
+                                                                        <span className="detail-label">📞 연락처</span>
+                                                                        <span className="detail-value">{user.phone_number || '-'}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="detail-stamps">
+                                                                    <h4>🎫 획득한 스탬프</h4>
+                                                                    <div className="stamp-grid">
+                                                                        {booths.map(booth => {
+                                                                            const collected = stamps.includes(booth.booth_id);
+                                                                            return (
+                                                                                <div 
+                                                                                    key={booth.booth_id}
+                                                                                    className={`stamp-item ${collected ? 'collected' : ''}`}
+                                                                                >
+                                                                                    <span className="stamp-icon">{booth.icon || '📍'}</span>
+                                                                                    <span className="stamp-name">{booth.booth_name}</span>
+                                                                                    {collected && <span className="check">✓</span>}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -484,7 +474,8 @@ const UserManage = () => {
                                 <label className="form-label">부스 선택 *</label>
                                 <div className="booth-select-grid">
                                     {booths.map(booth => {
-                                        const alreadyCollected = selectedUser.stamps.includes(booth.booth_id);
+                                        const stamps = getStamps(selectedUser);
+                                        const alreadyCollected = stamps.includes(booth.booth_id);
                                         return (
                                             <div
                                                 key={booth.booth_id}
@@ -517,15 +508,16 @@ const UserManage = () => {
                                 <button 
                                     className="cancel-btn"
                                     onClick={() => setShowStampModal(false)}
+                                    disabled={submitting}
                                 >
                                     취소
                                 </button>
                                 <button 
                                     className="submit-btn"
                                     onClick={handleGrantStamp}
-                                    disabled={!selectedBooth || !stampReason.trim()}
+                                    disabled={!selectedBooth || !stampReason.trim() || submitting}
                                 >
-                                    스탬프 부여
+                                    {submitting ? '처리 중...' : '스탬프 부여'}
                                 </button>
                             </div>
                         </div>

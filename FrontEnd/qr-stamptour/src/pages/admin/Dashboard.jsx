@@ -1,10 +1,11 @@
 // src/pages/admin/Dashboard.jsx
-// 관리자 대시보드 - 리뉴얼 버전
+// 관리자 대시보드 - 백엔드 연동 버전
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import KakaoMap from '../../components/KakaoMap';
 import { getAllBooths } from '../../services/boothApi';
+import { getDashboardStats, getCollectionStats, getSuspiciousRecords } from '../../services/adminApi';
 import { logout } from '../../services/authApi';
 import '../../styles/Dashboard.css';
 
@@ -44,7 +45,7 @@ const Dashboard = () => {
     const fetchAllData = async () => {
         setLoading(true);
         try {
-            // 부스 데이터 로드
+            // 1. 부스 데이터 로드
             const boothsData = await getAllBooths();
             const formattedBooths = boothsData.map(booth => ({
                 id: booth.booth_id,
@@ -56,7 +57,7 @@ const Dashboard = () => {
             }));
             setBooths(formattedBooths);
 
-            // 혼잡도 데이터 로드
+            // 2. 혼잡도 데이터 로드
             try {
                 const congestionResponse = await fetch('http://127.0.0.1:8000/api/v1/congestion');
                 if (congestionResponse.ok) {
@@ -64,39 +65,47 @@ const Dashboard = () => {
                     setCongestionData(congestion);
                 }
             } catch (e) {
-                // 테스트 데이터
-                const testCongestion = {};
+                // 혼잡도 API 실패 시 0으로 초기화
+                const initialCongestion = {};
                 formattedBooths.forEach(b => {
-                    testCongestion[b.id] = Math.floor(Math.random() * 25);
+                    initialCongestion[b.id] = 0;
                 });
-                setCongestionData(testCongestion);
+                setCongestionData(initialCongestion);
             }
 
-            // 통계 데이터 로드 (TODO: 실제 API 연동)
-            // const statsResponse = await fetch('http://127.0.0.1:8000/api/v1/admin/stats');
-            setStats({
-                totalUsers: 156,
-                completedUsers: 42,
-                totalStamps: 1248,
-                activeUsers: 89
-            });
+            // 3. 대시보드 통계 로드
+            try {
+                const statsData = await getDashboardStats();
+                setStats({
+                    totalUsers: statsData.total_users || 0,
+                    completedUsers: statsData.completed_users || 0,
+                    totalStamps: statsData.total_stamps || 0,
+                    activeUsers: statsData.active_users || 0
+                });
+            } catch (e) {
+                console.error('통계 로드 실패:', e);
+            }
 
-            // QR/PIN 수집 비율 (TODO: 실제 API 연동)
-            // const collectionResponse = await fetch('http://127.0.0.1:8000/api/v1/admin/collection-stats');
-            setCollectionStats({
-                qr: 85,
-                pin: 12,
-                admin: 3
-            });
+            // 4. QR/PIN 수집 비율 로드
+            try {
+                const collectionData = await getCollectionStats();
+                setCollectionStats({
+                    qr: collectionData.qr || 0,
+                    pin: collectionData.pin || 0,
+                    admin: collectionData.admin || 0
+                });
+            } catch (e) {
+                console.error('수집 비율 로드 실패:', e);
+            }
 
-            // 의심 기록 (TODO: 실제 API 연동)
-            // const suspiciousResponse = await fetch('http://127.0.0.1:8000/api/v1/admin/suspicious');
-            setSuspiciousRecords([
-                { id: 1, studentId: '20231234', name: '홍길동', booth: '국제교육팀', time: '2025-12-05 14:32', reason: 'GPS 불일치 (500m 이상)' },
-                { id: 2, studentId: '20231235', name: '김철수', booth: '교직과', time: '2025-12-05 14:35', reason: '30초 내 재스캔' },
-                { id: 3, studentId: '20231236', name: '이영희', booth: '글쓰기센터', time: '2025-12-05 14:40', reason: '동일 IP 다중 계정' },
-                { id: 4, studentId: '20231237', name: '박민수', booth: '취업팀', time: '2025-12-05 15:12', reason: 'GPS 불일치 (300m 이상)' },
-            ]);
+            // 5. 의심 기록 로드
+            try {
+                const suspiciousData = await getSuspiciousRecords(20);
+                setSuspiciousRecords(suspiciousData || []);
+            } catch (e) {
+                console.error('의심 기록 로드 실패:', e);
+                setSuspiciousRecords([]);
+            }
 
         } catch (error) {
             console.error('데이터 로드 실패:', error);
@@ -397,10 +406,10 @@ const Dashboard = () => {
                                 <tbody>
                                     {suspiciousRecords.map(record => (
                                         <tr key={record.id}>
-                                            <td className="student-id">{record.studentId}</td>
+                                            <td className="student-id">{record.student_id}</td>
                                             <td className="name">{record.name}</td>
                                             <td className="booth">{record.booth}</td>
-                                            <td className="time">{record.time}</td>
+                                            <td className="time">{record.time ? new Date(record.time).toLocaleString('ko-KR') : '-'}</td>
                                             <td className="reason">
                                                 <span className="reason-badge">{record.reason}</span>
                                             </td>

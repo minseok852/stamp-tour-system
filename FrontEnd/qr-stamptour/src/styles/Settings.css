@@ -9,7 +9,7 @@
     background: #F7FAFC;
 }
 
-.admin-loading {
+.loading-container {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -29,32 +29,6 @@
 
 @keyframes spin {
     to { transform: rotate(360deg); }
-}
-
-/* 저장 완료 토스트 */
-.saved-toast {
-    position: fixed;
-    top: 100px;
-    right: 30px;
-    background: #48BB78;
-    color: white;
-    padding: 15px 25px;
-    border-radius: 12px;
-    font-weight: 600;
-    box-shadow: 0 4px 20px rgba(72, 187, 120, 0.4);
-    z-index: 1001;
-    animation: slideIn 0.3s ease-out;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateX(50px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
 }
 
 /* ============================================
@@ -158,7 +132,11 @@
     padding: 30px;
 }
 
+/* 페이지 헤더 */
 .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 30px;
 }
 
@@ -174,6 +152,34 @@
     margin: 5px 0 0;
 }
 
+.save-btn {
+    padding: 14px 28px;
+    background: #CBD5E0;
+    color: #4A5568;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: not-allowed;
+    transition: all 0.2s;
+}
+
+.save-btn.active {
+    background: linear-gradient(135deg, #0D4E8C 0%, #1A6BB5 100%);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(13, 78, 140, 0.3);
+}
+
+.save-btn.active:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 78, 140, 0.4);
+}
+
+.save-btn:disabled {
+    opacity: 0.6;
+}
+
 /* ============================================
    설정 그리드
    ============================================ */
@@ -181,6 +187,7 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 25px;
+    margin-bottom: 25px;
 }
 
 .settings-card {
@@ -195,9 +202,6 @@
 }
 
 .card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     padding: 20px 25px;
     border-bottom: 2px solid #E2E8F0;
 }
@@ -210,38 +214,13 @@
 }
 
 .card-subtitle {
-    color: #718096;
     font-size: 0.9rem;
-    margin: 0;
+    color: #718096;
+    margin: 5px 0 0;
 }
 
-.event-status {
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.event-status.active {
-    background: #C6F6D5;
-    color: #276749;
-}
-
-.event-status.inactive {
-    background: #FED7D7;
-    color: #C53030;
-}
-
-.card-content {
+.card-body {
     padding: 25px;
-}
-
-.card-footer {
-    padding: 15px 25px;
-    background: #F7FAFC;
-    border-top: 1px solid #E2E8F0;
-    display: flex;
-    justify-content: flex-end;
 }
 
 /* ============================================
@@ -257,8 +236,9 @@
 
 .form-label {
     display: block;
+    font-size: 0.95rem;
     font-weight: 600;
-    color: #2D3748;
+    color: #4A5568;
     margin-bottom: 8px;
 }
 
@@ -269,33 +249,12 @@
     border-radius: 10px;
     font-size: 1rem;
     transition: border-color 0.2s;
+    box-sizing: border-box;
 }
 
 .form-input:focus {
     border-color: #0D4E8C;
     outline: none;
-}
-
-.form-textarea {
-    width: 100%;
-    padding: 12px 16px;
-    border: 2px solid #E2E8F0;
-    border-radius: 10px;
-    font-size: 1rem;
-    resize: vertical;
-    font-family: inherit;
-    transition: border-color 0.2s;
-}
-
-.form-textarea:focus {
-    border-color: #0D4E8C;
-    outline: none;
-}
-
-.form-hint {
-    font-size: 0.85rem;
-    color: #718096;
-    margin-top: 8px;
 }
 
 .form-row {
@@ -304,146 +263,147 @@
     gap: 15px;
 }
 
-/* 스탬프 개수 입력 */
-.stamp-count-input {
+.form-hint {
+    font-size: 0.85rem;
+    color: #718096;
+    margin-top: 8px;
+}
+
+/* ============================================
+   스탬프 카운터
+   ============================================ */
+.stamp-counter {
     display: flex;
     align-items: center;
     gap: 15px;
 }
 
-.count-btn {
-    width: 40px;
-    height: 40px;
-    border: 2px solid #0D4E8C;
-    background: white;
-    color: #0D4E8C;
-    border-radius: 10px;
+.counter-btn {
+    width: 45px;
+    height: 45px;
+    border: none;
+    border-radius: 12px;
+    background: #EDF2F7;
+    color: #2D3748;
     font-size: 1.5rem;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
 }
 
-.count-btn:hover {
+.counter-btn:hover:not(:disabled) {
     background: #0D4E8C;
     color: white;
 }
 
-.count-value {
-    font-size: 2rem;
+.counter-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.counter-value {
+    font-size: 1.5rem;
     font-weight: 800;
     color: #0D4E8C;
-    min-width: 60px;
+    min-width: 80px;
     text-align: center;
 }
 
-.count-max {
-    color: #718096;
-    font-size: 0.95rem;
-}
-
-/* 토글 스위치 */
+/* ============================================
+   토글 스위치
+   ============================================ */
 .toggle-switch {
     display: flex;
     align-items: center;
     gap: 12px;
-    cursor: pointer;
-    user-select: none;
 }
 
-.toggle-slider {
-    width: 50px;
-    height: 28px;
-    background: #CBD5E0;
-    border-radius: 14px;
+.toggle-switch input {
+    display: none;
+}
+
+.toggle-label {
     position: relative;
+    width: 56px;
+    height: 30px;
+    background: #CBD5E0;
+    border-radius: 15px;
+    cursor: pointer;
     transition: background 0.3s;
 }
 
-.toggle-slider::after {
-    content: '';
+.toggle-switch input:checked + .toggle-label {
+    background: #48BB78;
+}
+
+.toggle-switch-btn {
     position: absolute;
     top: 3px;
     left: 3px;
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     background: white;
     border-radius: 50%;
     transition: transform 0.3s;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-.toggle-switch.active .toggle-slider {
-    background: #48BB78;
+.toggle-switch input:checked + .toggle-label .toggle-switch-btn {
+    transform: translateX(26px);
 }
 
-.toggle-switch.active .toggle-slider::after {
-    transform: translateX(22px);
-}
-
-.toggle-label {
+.toggle-text {
+    font-size: 0.95rem;
     font-weight: 600;
-    color: #4A5568;
+    color: #718096;
 }
 
-/* Range 입력 */
-.range-input {
-    display: flex;
-    align-items: center;
-    gap: 15px;
+.toggle-text.active {
+    color: #48BB78;
 }
 
-.range-input input[type="range"] {
-    flex: 1;
+/* ============================================
+   레인지 슬라이더
+   ============================================ */
+.form-range {
+    width: 100%;
     height: 8px;
+    border-radius: 4px;
+    background: #E2E8F0;
+    outline: none;
     appearance: none;
     -webkit-appearance: none;
-    background: #E2E8F0;
-    border-radius: 4px;
-    outline: none;
 }
 
-.range-input input[type="range"]::-webkit-slider-thumb {
+.form-range::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 24px;
     height: 24px;
-    background: #0D4E8C;
     border-radius: 50%;
+    background: #0D4E8C;
     cursor: pointer;
     box-shadow: 0 2px 6px rgba(13, 78, 140, 0.4);
 }
 
-.range-value {
-    min-width: 60px;
-    font-weight: 700;
-    color: #0D4E8C;
-    text-align: right;
-}
-
-/* 저장 버튼 */
-.save-btn {
-    padding: 12px 30px;
+.form-range::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
     background: #0D4E8C;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 1rem;
     cursor: pointer;
-    transition: all 0.2s;
+    border: none;
 }
 
-.save-btn:hover:not(:disabled) {
-    background: #1A6BB5;
-}
-
-.save-btn:disabled {
-    background: #CBD5E0;
-    cursor: not-allowed;
+.range-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: #718096;
 }
 
 /* ============================================
-   PIN 관리
+   PIN 그리드
    ============================================ */
 .pin-grid {
     display: grid;
@@ -458,22 +418,42 @@
     padding: 15px 18px;
     background: #F7FAFC;
     border-radius: 12px;
-    border: 1px solid #E2E8F0;
+    transition: all 0.2s;
 }
 
-.pin-booth-info {
+.pin-item:hover {
+    background: #EDF2F7;
+}
+
+.pin-info {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
 }
 
-.pin-booth-icon {
-    font-size: 1.3rem;
+.pin-icon {
+    font-size: 1.5rem;
 }
 
-.pin-booth-name {
+.pin-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.pin-name {
     font-weight: 600;
     color: #2D3748;
+    font-size: 0.95rem;
+}
+
+.pin-location {
+    font-size: 0.8rem;
+    color: #718096;
+}
+
+.pin-value {
+    display: flex;
+    align-items: center;
 }
 
 .pin-display {
@@ -482,14 +462,28 @@
     gap: 10px;
 }
 
-.pin-value {
-    font-family: monospace;
+.pin-code {
+    font-family: 'Courier New', monospace;
     font-size: 1.1rem;
     font-weight: 700;
     color: #0D4E8C;
-    background: #EBF8FF;
+    background: white;
     padding: 6px 12px;
     border-radius: 8px;
+    border: 2px solid #E2E8F0;
+}
+
+.pin-edit-btn {
+    background: none;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 5px;
+    transition: transform 0.2s;
+}
+
+.pin-edit-btn:hover {
+    transform: scale(1.2);
 }
 
 .pin-edit {
@@ -503,8 +497,9 @@
     padding: 8px 12px;
     border: 2px solid #0D4E8C;
     border-radius: 8px;
-    font-family: monospace;
+    font-family: 'Courier New', monospace;
     font-size: 1rem;
+    font-weight: 700;
     text-align: center;
 }
 
@@ -512,40 +507,32 @@
     outline: none;
 }
 
-.pin-btn {
-    width: 34px;
-    height: 34px;
+.pin-save-btn,
+.pin-cancel-btn {
+    width: 32px;
+    height: 32px;
     border: none;
     border-radius: 8px;
-    cursor: pointer;
     font-size: 1rem;
+    cursor: pointer;
     transition: all 0.2s;
 }
 
-.pin-btn.edit {
-    background: #EDF2F7;
-    color: #4A5568;
-}
-
-.pin-btn.edit:hover {
-    background: #E2E8F0;
-}
-
-.pin-btn.save {
+.pin-save-btn {
     background: #48BB78;
     color: white;
 }
 
-.pin-btn.save:hover {
+.pin-save-btn:hover {
     background: #38A169;
 }
 
-.pin-btn.cancel {
+.pin-cancel-btn {
     background: #E53E3E;
     color: white;
 }
 
-.pin-btn.cancel:hover {
+.pin-cancel-btn:hover {
     background: #C53030;
 }
 
@@ -555,10 +542,6 @@
 @media (max-width: 1024px) {
     .settings-grid {
         grid-template-columns: 1fr;
-    }
-
-    .settings-card.full-width {
-        grid-column: 1;
     }
 }
 
@@ -583,22 +566,22 @@
         padding: 20px 15px;
     }
 
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
     .page-title {
         font-size: 1.5rem;
     }
 
-    .card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
+    .save-btn {
+        width: 100%;
     }
 
     .form-row {
         grid-template-columns: 1fr;
-    }
-
-    .stamp-count-input {
-        flex-wrap: wrap;
     }
 
     .pin-grid {
@@ -607,12 +590,12 @@
 
     .pin-item {
         flex-direction: column;
+        align-items: flex-start;
         gap: 12px;
-        align-items: stretch;
     }
 
-    .pin-display,
-    .pin-edit {
-        justify-content: center;
+    .pin-value {
+        width: 100%;
+        justify-content: flex-end;
     }
 }

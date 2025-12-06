@@ -1,135 +1,200 @@
 // src/pages/admin/Settings.jsx
-// 이벤트 설정 페이지 - 기간, 스탬프 개수, PIN 설정 등
+// 이벤트 설정 페이지 - 백엔드 연동 버전
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { logout } from '../../services/authApi';
-import { getAllBooths } from '../../services/boothApi';
+import { logout, getCurrentUser } from '../../services/authApi';
+import { getSettings, updateSettings, getBoothPins, updateBoothPin } from '../../services/adminApi';
 import '../../styles/Settings.css';
 
 const Settings = () => {
     const navigate = useNavigate();
     
-    // 이벤트 기본 설정
+    // 이벤트 설정
     const [eventSettings, setEventSettings] = useState({
-        eventName: '2025 대진대학교 스탬프 투어',
-        startDate: '2025-12-01',
-        endDate: '2025-12-31',
-        startTime: '09:00',
-        endTime: '18:00',
-        requiredStamps: 15,
-        isActive: true
+        event_name: '',
+        start_date: '',
+        end_date: '',
+        start_time: '09:00',
+        end_time: '18:00',
+        required_stamps: 15,
+        total_booths: 15,
+        is_active: true
     });
 
     // GPS 설정
     const [gpsSettings, setGpsSettings] = useState({
-        enabled: true,
-        maxDistance: 100, // 미터
-        allowBypass: false
+        gps_enabled: true,
+        gps_max_distance: 100,
+        gps_bypass_allowed: true
     });
 
-    // 부스 PIN 설정
-    const [booths, setBooths] = useState([]);
+    // 부스 PIN
+    const [boothPins, setBoothPins] = useState([]);
     const [editingPin, setEditingPin] = useState(null);
     const [newPin, setNewPin] = useState('');
-
-    // 로딩 및 저장 상태
+    
+    // 로딩 및 상태
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [savedMessage, setSavedMessage] = useState('');
+    const [authChecked, setAuthChecked] = useState(false);
+    const [hasChanges, setHasChanges] = useState(false);
 
-    // 데이터 로드
+    // 인증 체크
     useEffect(() => {
-        fetchData();
+        checkAuth();
     }, []);
 
+    const checkAuth = async () => {
+        const token = localStorage.getItem('access_token');
+        const userStr = localStorage.getItem('user');
+        
+        if (!token) {
+            alert('로그인이 필요합니다.');
+            navigate('/login');
+            return;
+        }
+
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                if (user.role !== 'admin') {
+                    alert('관리자 권한이 필요합니다.');
+                    navigate('/');
+                    return;
+                }
+            } catch (e) {
+                console.error('사용자 정보 파싱 실패:', e);
+            }
+        }
+
+        try {
+            await getCurrentUser();
+            setAuthChecked(true);
+            fetchData();
+        } catch (error) {
+            console.error('토큰 검증 실패:', error);
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+            alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+            navigate('/login');
+        }
+    };
+
+    // 401 에러 처리
+    const handleAuthError = (error) => {
+        if (error?.response?.status === 401) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+            alert('세션이 만료되었습니다. 다시 로그인해주세요.');
+            navigate('/login');
+            return true;
+        }
+        return false;
+    };
+
+    // 데이터 로드
     const fetchData = async () => {
         setLoading(true);
         try {
-            // 부스 데이터 로드
-            const boothsData = await getAllBooths();
-            setBooths(boothsData);
+            // 설정 조회
+            const settings = await getSettings();
+            setEventSettings({
+                event_name: settings.event_name || '',
+                start_date: settings.start_date || '',
+                end_date: settings.end_date || '',
+                start_time: settings.start_time || '09:00',
+                end_time: settings.end_time || '18:00',
+                required_stamps: settings.required_stamps || 15,
+                total_booths: settings.total_booths || 15,
+                is_active: settings.is_active ?? true
+            });
+            setGpsSettings({
+                gps_enabled: settings.gps_enabled ?? true,
+                gps_max_distance: settings.gps_max_distance || 100,
+                gps_bypass_allowed: settings.gps_bypass_allowed ?? true
+            });
 
-            // 이벤트 설정 로드 (TODO: 실제 API 연동)
-            // const settingsResponse = await fetch('http://127.0.0.1:8000/api/v1/admin/settings');
-            // const settings = await settingsResponse.json();
-            
+            // 부스 PIN 조회
+            const pins = await getBoothPins();
+            setBoothPins(pins);
         } catch (error) {
-            console.error('데이터 로드 실패:', error);
+            if (!handleAuthError(error)) {
+                console.error('설정 로드 실패:', error);
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    // 이벤트 설정 저장
-    const handleSaveEventSettings = async () => {
+    // 설정 변경 핸들러
+    const handleEventChange = (field, value) => {
+        setEventSettings(prev => ({ ...prev, [field]: value }));
+        setHasChanges(true);
+    };
+
+    const handleGpsChange = (field, value) => {
+        setGpsSettings(prev => ({ ...prev, [field]: value }));
+        setHasChanges(true);
+    };
+
+    // 스탬프 개수 조절
+    const adjustStamps = (delta) => {
+        const newValue = Math.max(1, Math.min(eventSettings.total_booths, eventSettings.required_stamps + delta));
+        handleEventChange('required_stamps', newValue);
+    };
+
+    // 설정 저장
+    const handleSaveSettings = async () => {
         setSaving(true);
         try {
-            // TODO: 실제 API 호출
-            // await fetch('http://127.0.0.1:8000/api/v1/admin/settings', {
-            //     method: 'PUT',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify(eventSettings)
-            // });
-
-            await new Promise(resolve => setTimeout(resolve, 500)); // 시뮬레이션
-            showSavedMessage('이벤트 설정이 저장되었습니다.');
+            const settingsToSave = {
+                ...eventSettings,
+                ...gpsSettings
+            };
+            
+            await updateSettings(settingsToSave);
+            alert('설정이 저장되었습니다.');
+            setHasChanges(false);
         } catch (error) {
-            console.error('저장 실패:', error);
-            alert('설정 저장에 실패했습니다.');
+            if (!handleAuthError(error)) {
+                console.error('설정 저장 실패:', error);
+                alert(error?.detail || '설정 저장에 실패했습니다.');
+            }
         } finally {
             setSaving(false);
         }
     };
 
-    // GPS 설정 저장
-    const handleSaveGpsSettings = async () => {
-        setSaving(true);
-        try {
-            await new Promise(resolve => setTimeout(resolve, 500));
-            showSavedMessage('GPS 설정이 저장되었습니다.');
-        } catch (error) {
-            console.error('저장 실패:', error);
-        } finally {
-            setSaving(false);
-        }
+    // PIN 수정 시작
+    const startEditPin = (booth) => {
+        setEditingPin(booth.booth_id);
+        setNewPin(booth.qr_pin || '');
     };
 
-    // PIN 변경
-    const handleUpdatePin = async (boothId) => {
-        if (!newPin.trim() || newPin.length < 4) {
-            alert('PIN은 4자리 이상이어야 합니다.');
+    // PIN 저장
+    const savePin = async (boothId) => {
+        if (newPin.length < 4) {
+            alert('PIN은 최소 4자리 이상이어야 합니다.');
             return;
         }
 
         try {
-            // TODO: 실제 API 호출
-            // await fetch(`http://127.0.0.1:8000/api/v1/admin/booths/${boothId}/pin`, {
-            //     method: 'PUT',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({ qr_pin: newPin })
-            // });
-
-            setBooths(prevBooths =>
-                prevBooths.map(booth =>
-                    booth.booth_id === boothId
-                        ? { ...booth, qr_pin: newPin }
-                        : booth
-                )
-            );
-
+            await updateBoothPin(boothId, newPin);
+            
+            // 로컬 상태 업데이트
+            setBoothPins(prev => prev.map(b => 
+                b.booth_id === boothId ? { ...b, qr_pin: newPin } : b
+            ));
+            
             setEditingPin(null);
             setNewPin('');
-            showSavedMessage('PIN이 변경되었습니다.');
+            alert('PIN이 수정되었습니다.');
         } catch (error) {
-            console.error('PIN 변경 실패:', error);
-            alert('PIN 변경에 실패했습니다.');
+            if (!handleAuthError(error)) {
+                console.error('PIN 수정 실패:', error);
+                alert(error?.detail || 'PIN 수정에 실패했습니다.');
+            }
         }
-    };
-
-    // 저장 메시지 표시
-    const showSavedMessage = (message) => {
-        setSavedMessage(message);
-        setTimeout(() => setSavedMessage(''), 3000);
     };
 
     // 로그아웃
@@ -138,33 +203,31 @@ const Settings = () => {
         navigate('/');
     };
 
-    // 이벤트 상태 토글
-    const toggleEventActive = () => {
-        setEventSettings(prev => ({
-            ...prev,
-            isActive: !prev.isActive
-        }));
-    };
+    // 인증 체크 전
+    if (!authChecked) {
+        return (
+            <div className="settings-page">
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>인증 확인 중...</p>
+                </div>
+            </div>
+        );
+    }
 
-    // 로딩 화면
     if (loading) {
         return (
-            <div className="admin-loading">
-                <div className="loading-spinner"></div>
-                <p>설정을 불러오는 중...</p>
+            <div className="settings-page">
+                <div className="loading-container">
+                    <div className="loading-spinner"></div>
+                    <p>설정 로딩 중...</p>
+                </div>
             </div>
         );
     }
 
     return (
         <div className="settings-page">
-            {/* 저장 완료 메시지 */}
-            {savedMessage && (
-                <div className="saved-toast">
-                    ✅ {savedMessage}
-                </div>
-            )}
-
             {/* 상단 네비게이션 */}
             <nav className="admin-nav">
                 <div className="admin-nav-left">
@@ -204,31 +267,34 @@ const Settings = () => {
             <div className="settings-content">
                 {/* 페이지 헤더 */}
                 <div className="page-header">
-                    <h1 className="page-title">⚙️ 이벤트 설정</h1>
-                    <p className="page-subtitle">스탬프 투어 이벤트 설정을 관리합니다</p>
+                    <div className="header-left">
+                        <h1 className="page-title">⚙️ 이벤트 설정</h1>
+                        <p className="page-subtitle">스탬프 투어 이벤트 설정을 관리합니다</p>
+                    </div>
+                    <button 
+                        className={`save-btn ${hasChanges ? 'active' : ''}`}
+                        onClick={handleSaveSettings}
+                        disabled={saving || !hasChanges}
+                    >
+                        {saving ? '저장 중...' : '💾 설정 저장'}
+                    </button>
                 </div>
 
-                {/* 설정 그리드 */}
                 <div className="settings-grid">
-                    {/* 이벤트 기본 설정 */}
+                    {/* 이벤트 기본 정보 */}
                     <div className="settings-card">
                         <div className="card-header">
                             <h2 className="card-title">📅 이벤트 기본 정보</h2>
-                            <div className={`event-status ${eventSettings.isActive ? 'active' : 'inactive'}`}>
-                                {eventSettings.isActive ? '🟢 진행중' : '🔴 종료'}
-                            </div>
                         </div>
-                        <div className="card-content">
+                        <div className="card-body">
                             <div className="form-group">
-                                <label className="form-label">이벤트 이름</label>
+                                <label className="form-label">이벤트명</label>
                                 <input
                                     type="text"
                                     className="form-input"
-                                    value={eventSettings.eventName}
-                                    onChange={(e) => setEventSettings({
-                                        ...eventSettings,
-                                        eventName: e.target.value
-                                    })}
+                                    value={eventSettings.event_name}
+                                    onChange={(e) => handleEventChange('event_name', e.target.value)}
+                                    placeholder="예: 2025 대진대 스탬프 투어"
                                 />
                             </div>
 
@@ -238,11 +304,8 @@ const Settings = () => {
                                     <input
                                         type="date"
                                         className="form-input"
-                                        value={eventSettings.startDate}
-                                        onChange={(e) => setEventSettings({
-                                            ...eventSettings,
-                                            startDate: e.target.value
-                                        })}
+                                        value={eventSettings.start_date}
+                                        onChange={(e) => handleEventChange('start_date', e.target.value)}
                                     />
                                 </div>
                                 <div className="form-group">
@@ -250,11 +313,8 @@ const Settings = () => {
                                     <input
                                         type="date"
                                         className="form-input"
-                                        value={eventSettings.endDate}
-                                        onChange={(e) => setEventSettings({
-                                            ...eventSettings,
-                                            endDate: e.target.value
-                                        })}
+                                        value={eventSettings.end_date}
+                                        onChange={(e) => handleEventChange('end_date', e.target.value)}
                                     />
                                 </div>
                             </div>
@@ -265,11 +325,8 @@ const Settings = () => {
                                     <input
                                         type="time"
                                         className="form-input"
-                                        value={eventSettings.startTime}
-                                        onChange={(e) => setEventSettings({
-                                            ...eventSettings,
-                                            startTime: e.target.value
-                                        })}
+                                        value={eventSettings.start_time}
+                                        onChange={(e) => handleEventChange('start_time', e.target.value)}
                                     />
                                 </div>
                                 <div className="form-group">
@@ -277,175 +334,165 @@ const Settings = () => {
                                     <input
                                         type="time"
                                         className="form-input"
-                                        value={eventSettings.endTime}
-                                        onChange={(e) => setEventSettings({
-                                            ...eventSettings,
-                                            endTime: e.target.value
-                                        })}
+                                        value={eventSettings.end_time}
+                                        onChange={(e) => handleEventChange('end_time', e.target.value)}
                                     />
                                 </div>
                             </div>
 
                             <div className="form-group">
-                                <label className="form-label">완주에 필요한 스탬프 개수</label>
-                                <div className="stamp-count-input">
+                                <label className="form-label">완주 필요 스탬프 개수</label>
+                                <div className="stamp-counter">
                                     <button 
-                                        className="count-btn"
-                                        onClick={() => setEventSettings({
-                                            ...eventSettings,
-                                            requiredStamps: Math.max(1, eventSettings.requiredStamps - 1)
-                                        })}
+                                        className="counter-btn"
+                                        onClick={() => adjustStamps(-1)}
+                                        disabled={eventSettings.required_stamps <= 1}
                                     >
-                                        -
+                                        −
                                     </button>
-                                    <span className="count-value">{eventSettings.requiredStamps}</span>
+                                    <span className="counter-value">
+                                        {eventSettings.required_stamps} / {eventSettings.total_booths}
+                                    </span>
                                     <button 
-                                        className="count-btn"
-                                        onClick={() => setEventSettings({
-                                            ...eventSettings,
-                                            requiredStamps: Math.min(booths.length, eventSettings.requiredStamps + 1)
-                                        })}
+                                        className="counter-btn"
+                                        onClick={() => adjustStamps(1)}
+                                        disabled={eventSettings.required_stamps >= eventSettings.total_booths}
                                     >
                                         +
                                     </button>
-                                    <span className="count-max">/ {booths.length} 부스</span>
                                 </div>
                             </div>
 
                             <div className="form-group">
                                 <label className="form-label">이벤트 상태</label>
-                                <div 
-                                    className={`toggle-switch ${eventSettings.isActive ? 'active' : ''}`}
-                                    onClick={toggleEventActive}
-                                >
-                                    <div className="toggle-slider"></div>
-                                    <span className="toggle-label">
-                                        {eventSettings.isActive ? '진행중' : '종료'}
+                                <div className="toggle-switch">
+                                    <input
+                                        type="checkbox"
+                                        id="eventActive"
+                                        checked={eventSettings.is_active}
+                                        onChange={(e) => handleEventChange('is_active', e.target.checked)}
+                                    />
+                                    <label htmlFor="eventActive" className="toggle-label">
+                                        <span className="toggle-inner"></span>
+                                        <span className="toggle-switch-btn"></span>
+                                    </label>
+                                    <span className={`toggle-text ${eventSettings.is_active ? 'active' : ''}`}>
+                                        {eventSettings.is_active ? '진행중' : '종료'}
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <div className="card-footer">
-                            <button 
-                                className="save-btn"
-                                onClick={handleSaveEventSettings}
-                                disabled={saving}
-                            >
-                                {saving ? '저장 중...' : '💾 저장'}
-                            </button>
-                        </div>
                     </div>
 
-                    {/* GPS 설정 */}
+                    {/* GPS 검증 설정 */}
                     <div className="settings-card">
                         <div className="card-header">
                             <h2 className="card-title">📍 GPS 검증 설정</h2>
                         </div>
-                        <div className="card-content">
+                        <div className="card-body">
                             <div className="form-group">
                                 <label className="form-label">GPS 검증 사용</label>
-                                <div 
-                                    className={`toggle-switch ${gpsSettings.enabled ? 'active' : ''}`}
-                                    onClick={() => setGpsSettings({
-                                        ...gpsSettings,
-                                        enabled: !gpsSettings.enabled
-                                    })}
-                                >
-                                    <div className="toggle-slider"></div>
-                                    <span className="toggle-label">
-                                        {gpsSettings.enabled ? '사용' : '사용 안함'}
+                                <div className="toggle-switch">
+                                    <input
+                                        type="checkbox"
+                                        id="gpsEnabled"
+                                        checked={gpsSettings.gps_enabled}
+                                        onChange={(e) => handleGpsChange('gps_enabled', e.target.checked)}
+                                    />
+                                    <label htmlFor="gpsEnabled" className="toggle-label">
+                                        <span className="toggle-inner"></span>
+                                        <span className="toggle-switch-btn"></span>
+                                    </label>
+                                    <span className={`toggle-text ${gpsSettings.gps_enabled ? 'active' : ''}`}>
+                                        {gpsSettings.gps_enabled ? '사용' : '미사용'}
                                     </span>
                                 </div>
                             </div>
 
-                            {gpsSettings.enabled && (
+                            {gpsSettings.gps_enabled && (
                                 <>
                                     <div className="form-group">
-                                        <label className="form-label">허용 거리 (미터)</label>
-                                        <div className="range-input">
-                                            <input
-                                                type="range"
-                                                min="50"
-                                                max="500"
-                                                step="10"
-                                                value={gpsSettings.maxDistance}
-                                                onChange={(e) => setGpsSettings({
-                                                    ...gpsSettings,
-                                                    maxDistance: parseInt(e.target.value)
-                                                })}
-                                            />
-                                            <span className="range-value">{gpsSettings.maxDistance}m</span>
+                                        <label className="form-label">
+                                            허용 거리: <strong>{gpsSettings.gps_max_distance}m</strong>
+                                        </label>
+                                        <input
+                                            type="range"
+                                            className="form-range"
+                                            min="50"
+                                            max="500"
+                                            step="10"
+                                            value={gpsSettings.gps_max_distance}
+                                            onChange={(e) => handleGpsChange('gps_max_distance', parseInt(e.target.value))}
+                                        />
+                                        <div className="range-labels">
+                                            <span>50m</span>
+                                            <span>500m</span>
                                         </div>
-                                        <p className="form-hint">
-                                            부스 위치에서 {gpsSettings.maxDistance}m 이내에서만 스탬프 획득 가능
-                                        </p>
                                     </div>
 
                                     <div className="form-group">
-                                        <label className="form-label">GPS 오류 시 우회 허용</label>
-                                        <div 
-                                            className={`toggle-switch ${gpsSettings.allowBypass ? 'active' : ''}`}
-                                            onClick={() => setGpsSettings({
-                                                ...gpsSettings,
-                                                allowBypass: !gpsSettings.allowBypass
-                                            })}
-                                        >
-                                            <div className="toggle-slider"></div>
-                                            <span className="toggle-label">
-                                                {gpsSettings.allowBypass ? '허용' : '허용 안함'}
+                                        <label className="form-label">GPS 오류 시 PIN 입력 허용</label>
+                                        <div className="toggle-switch">
+                                            <input
+                                                type="checkbox"
+                                                id="gpsBypass"
+                                                checked={gpsSettings.gps_bypass_allowed}
+                                                onChange={(e) => handleGpsChange('gps_bypass_allowed', e.target.checked)}
+                                            />
+                                            <label htmlFor="gpsBypass" className="toggle-label">
+                                                <span className="toggle-inner"></span>
+                                                <span className="toggle-switch-btn"></span>
+                                            </label>
+                                            <span className={`toggle-text ${gpsSettings.gps_bypass_allowed ? 'active' : ''}`}>
+                                                {gpsSettings.gps_bypass_allowed ? '허용' : '미허용'}
                                             </span>
                                         </div>
                                         <p className="form-hint">
-                                            GPS 획득 실패 시 PIN 입력으로 대체 가능 여부
+                                            GPS 신호가 약할 때 부스별 PIN 번호로 대체 인증할 수 있습니다.
                                         </p>
                                     </div>
                                 </>
                             )}
                         </div>
-                        <div className="card-footer">
-                            <button 
-                                className="save-btn"
-                                onClick={handleSaveGpsSettings}
-                                disabled={saving}
-                            >
-                                {saving ? '저장 중...' : '💾 저장'}
-                            </button>
-                        </div>
                     </div>
+                </div>
 
-                    {/* 부스 PIN 관리 */}
-                    <div className="settings-card full-width">
-                        <div className="card-header">
-                            <h2 className="card-title">🔢 부스 PIN 관리</h2>
-                            <p className="card-subtitle">QR 스캔 실패 시 사용할 PIN 번호</p>
-                        </div>
-                        <div className="card-content">
-                            <div className="pin-grid">
-                                {booths.map(booth => (
-                                    <div key={booth.booth_id} className="pin-item">
-                                        <div className="pin-booth-info">
-                                            <span className="pin-booth-icon">{booth.icon || '📍'}</span>
-                                            <span className="pin-booth-name">{booth.booth_name}</span>
+                {/* 부스 PIN 관리 */}
+                <div className="settings-card full-width">
+                    <div className="card-header">
+                        <h2 className="card-title">🔐 부스 PIN 관리</h2>
+                        <p className="card-subtitle">QR 스캔 오류 시 사용되는 부스별 PIN 번호</p>
+                    </div>
+                    <div className="card-body">
+                        <div className="pin-grid">
+                            {boothPins.map(booth => (
+                                <div key={booth.booth_id} className="pin-item">
+                                    <div className="pin-info">
+                                        <span className="pin-icon">{booth.icon || '📍'}</span>
+                                        <div className="pin-details">
+                                            <span className="pin-name">{booth.booth_name}</span>
+                                            <span className="pin-location">{booth.location_name || '-'}</span>
                                         </div>
+                                    </div>
+                                    <div className="pin-value">
                                         {editingPin === booth.booth_id ? (
                                             <div className="pin-edit">
                                                 <input
                                                     type="text"
                                                     className="pin-input"
                                                     value={newPin}
-                                                    onChange={(e) => setNewPin(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                                                    placeholder="새 PIN"
-                                                    maxLength={6}
-                                                    autoFocus
+                                                    onChange={(e) => setNewPin(e.target.value)}
+                                                    placeholder="PIN 입력"
+                                                    maxLength={10}
                                                 />
                                                 <button 
-                                                    className="pin-btn save"
-                                                    onClick={() => handleUpdatePin(booth.booth_id)}
+                                                    className="pin-save-btn"
+                                                    onClick={() => savePin(booth.booth_id)}
                                                 >
                                                     ✓
                                                 </button>
                                                 <button 
-                                                    className="pin-btn cancel"
+                                                    className="pin-cancel-btn"
                                                     onClick={() => {
                                                         setEditingPin(null);
                                                         setNewPin('');
@@ -456,23 +503,18 @@ const Settings = () => {
                                             </div>
                                         ) : (
                                             <div className="pin-display">
-                                                <span className="pin-value">
-                                                    {booth.qr_pin || '미설정'}
-                                                </span>
+                                                <span className="pin-code">{booth.qr_pin || '미설정'}</span>
                                                 <button 
-                                                    className="pin-btn edit"
-                                                    onClick={() => {
-                                                        setEditingPin(booth.booth_id);
-                                                        setNewPin(booth.qr_pin || '');
-                                                    }}
+                                                    className="pin-edit-btn"
+                                                    onClick={() => startEditPin(booth)}
                                                 >
                                                     ✏️
                                                 </button>
                                             </div>
                                         )}
                                     </div>
-                                ))}
-                            </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

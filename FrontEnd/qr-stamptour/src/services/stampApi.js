@@ -1,41 +1,33 @@
-// FrontEnd/qr-stamptour/src/services/stampApi.js
-// 스탬프 조회/추가 관련 API
+// src/services/stampApi.js
+// 스탬프 관련 API 서비스
 
 import api from './api';
 
-// 1. 내 스탬프 목록 조회
-export const getMyStamps = async () => {
+// ⭐ QR 코드로 스탬프 수집 (GPS 기반)
+export const collectStampByQR = async (qrCode, latitude, longitude) => {
     try {
-        // 백엔드 API: GET /api/v1/stamps/my-stamps
-        const response = await api.get('/stamps/my-stamps');
-        return response.data;
-    } catch (error) {
-        // console.error('내 스탬프 조회 실패:', error);
-        throw error;
-    }
-};
-
-// 2. QR 스캔으로 스탬프 수집
-export const scanStamp = async (qrCode, qrPin, latitude, longitude) => {
-    try {
-        // 백엔드 API: POST /api/v1/stamps/scan
+        // 먼저 QR 코드로 부스 정보 조회
+        const boothResponse = await api.get(`/booths/by-qr/${qrCode}`);
+        const booth = boothResponse.data;
+        
+        // 스탬프 수집 요청
         const response = await api.post('/stamps/scan', {
             qr_code: qrCode,
-            qr_pin: qrPin,
+            qr_pin: booth.qr_pin, // 부스의 PIN 사용
             user_latitude: latitude,
             user_longitude: longitude
         });
+        
         return response.data;
     } catch (error) {
-        // console.error('스탬프 수집 실패:', error);
+        console.error('QR 스탬프 수집 실패:', error);
         throw error;
     }
 };
 
-// 3. PIN 수동 입력으로 스탬프 수집 (관리자용)
+// ⭐ PIN 번호로 스탬프 수집 (GPS 오류 시)
 export const collectStampByPin = async (boothId, pin) => {
     try {
-        // 백엔드 API: POST /api/v1/stamps/pin
         const response = await api.post('/stamps/pin', null, {
             params: {
                 booth_id: boothId,
@@ -44,31 +36,56 @@ export const collectStampByPin = async (boothId, pin) => {
         });
         return response.data;
     } catch (error) {
-        // console.error('PIN 스탬프 수집 실패:', error);
+        console.error('PIN 스탬프 수집 실패:', error);
         throw error;
     }
 };
 
-// 4. 완주 상태 확인
+// 기존 scanStamp 함수 (호환성 유지)
+export const scanStamp = async (qrCode, pin, latitude, longitude) => {
+    try {
+        const response = await api.post('/stamps/scan', {
+            qr_code: qrCode,
+            qr_pin: pin,
+            user_latitude: latitude,
+            user_longitude: longitude
+        });
+        return response.data;
+    } catch (error) {
+        console.error('스탬프 수집 실패:', error);
+        throw error;
+    }
+};
+
+// 내 스탬프 목록 조회
+export const getMyStamps = async () => {
+    try {
+        const response = await api.get('/stamps/my-stamps');
+        return response.data;
+    } catch (error) {
+        console.error('내 스탬프 조회 실패:', error);
+        throw error;
+    }
+};
+
+// 완주 상태 확인
 export const getCompletionStatus = async () => {
     try {
-        // 백엔드 API: GET /api/v1/stamps/completion-status
         const response = await api.get('/stamps/completion-status');
         return response.data;
     } catch (error) {
-        // console.error('완주 상태 조회 실패:', error);
+        console.error('완주 상태 확인 실패:', error);
         throw error;
     }
 };
 
-// 5. 부스 수집 상태 조회 (모든 부스 + 내가 모은 것 표시)
-export const getBoothsStatus = async () => {
+// 부스 상태 조회 (내가 수집한 스탬프 표시)
+export const getBoothsWithStatus = async () => {
     try {
-        // 백엔드 API: GET /api/v1/stamps/booths-status
         const response = await api.get('/stamps/booths-status');
         return response.data;
     } catch (error) {
-        // console.error('부스 상태 조회 실패:', error);
+        console.error('부스 상태 조회 실패:', error);
         throw error;
     }
 };
