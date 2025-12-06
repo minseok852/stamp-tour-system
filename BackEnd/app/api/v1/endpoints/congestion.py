@@ -21,7 +21,7 @@ router = APIRouter(
 )
 
 # 혼잡도 계산 기준 시간 (분)
-CONGESTION_TIME_WINDOW = 10  # 최근 10분
+CONGESTION_TIME_WINDOW = 3  # 최근 3분
 
 
 def get_congestion_level(count: int) -> dict:
