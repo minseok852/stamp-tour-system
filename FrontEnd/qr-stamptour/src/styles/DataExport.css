@@ -1,0 +1,482 @@
+/* src/styles/DataExport.css */
+/* 데이터 다운로드 페이지 스타일 */
+
+/* ============================================
+   공통
+   ============================================ */
+.data-export-page {
+    min-height: 100vh;
+    background: #F7FAFC;
+}
+
+/* ============================================
+   네비게이션 (공통)
+   ============================================ */
+.admin-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #0D4E8C 0%, #1A6BB5 100%);
+    padding: 15px 30px;
+    box-shadow: 0 4px 20px rgba(13, 78, 140, 0.3);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.admin-nav-left {
+    display: flex;
+    align-items: center;
+}
+
+.admin-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+}
+
+.admin-logo-icon {
+    font-size: 1.8rem;
+}
+
+.admin-logo-text {
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.admin-nav-menu {
+    display: flex;
+    gap: 5px;
+}
+
+.admin-nav-item {
+    padding: 10px 18px;
+    color: rgba(255, 255, 255, 0.8);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.admin-nav-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.admin-nav-item.active {
+    background: rgba(255, 255, 255, 0.25);
+    color: white;
+}
+
+.admin-nav-right {
+    display: flex;
+    gap: 10px;
+}
+
+.admin-nav-btn {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.admin-nav-btn.home {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.admin-nav-btn.home:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.admin-nav-btn.logout {
+    background: #E53E3E;
+    color: white;
+}
+
+.admin-nav-btn.logout:hover {
+    background: #C53030;
+}
+
+/* ============================================
+   메인 컨텐츠
+   ============================================ */
+.export-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px;
+}
+
+/* 페이지 헤더 */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #2D3748;
+    margin: 0;
+}
+
+.page-subtitle {
+    color: #718096;
+    margin: 5px 0 0;
+}
+
+.download-all-btn {
+    padding: 16px 32px;
+    background: linear-gradient(135deg, #0D4E8C 0%, #1A6BB5 100%);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 15px rgba(13, 78, 140, 0.3);
+}
+
+.download-all-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(13, 78, 140, 0.4);
+}
+
+.download-all-btn:disabled {
+    background: #CBD5E0;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ============================================
+   날짜 범위 카드
+   ============================================ */
+.date-range-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
+    overflow: hidden;
+}
+
+.date-range-header {
+    padding: 20px 25px;
+    border-bottom: 2px solid #E2E8F0;
+}
+
+.date-range-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #2D3748;
+    margin: 0;
+}
+
+.date-range-content {
+    padding: 25px;
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.date-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.date-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #4A5568;
+}
+
+.date-input {
+    padding: 12px 16px;
+    border: 2px solid #E2E8F0;
+    border-radius: 10px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+    min-width: 160px;
+}
+
+.date-input:focus {
+    border-color: #0D4E8C;
+    outline: none;
+}
+
+.date-separator {
+    font-size: 1.5rem;
+    color: #A0AEC0;
+    padding-bottom: 10px;
+}
+
+.quick-date-btns {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.quick-btn {
+    padding: 10px 18px;
+    background: #EDF2F7;
+    color: #4A5568;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.quick-btn:hover {
+    background: #0D4E8C;
+    color: white;
+}
+
+/* ============================================
+   다운로드 그리드
+   ============================================ */
+.download-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.download-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.download-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+.download-card-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 25px 25px 15px;
+}
+
+.download-icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+}
+
+.download-info {
+    flex: 1;
+}
+
+.download-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #2D3748;
+    margin: 0 0 5px;
+}
+
+.download-desc {
+    font-size: 0.9rem;
+    color: #718096;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.download-card-body {
+    padding: 0 25px 20px;
+}
+
+.download-columns {
+    background: #F7FAFC;
+    padding: 12px 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+.columns-label {
+    display: block;
+    font-size: 0.8rem;
+    color: #718096;
+    margin-bottom: 5px;
+}
+
+.columns-value {
+    font-size: 0.85rem;
+    color: #4A5568;
+    line-height: 1.5;
+}
+
+.download-count {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.count-value {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0D4E8C;
+}
+
+.count-unit {
+    font-size: 1rem;
+    color: #718096;
+}
+
+.download-card-footer {
+    padding: 15px 25px 25px;
+    display: flex;
+    gap: 10px;
+}
+
+.download-btn {
+    flex: 1;
+    padding: 14px 20px;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.download-btn.csv {
+    background: #48BB78;
+    color: white;
+}
+
+.download-btn.csv:hover:not(:disabled) {
+    background: #38A169;
+}
+
+.download-btn:disabled {
+    background: #CBD5E0;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   안내 사항
+   ============================================ */
+.export-notice {
+    background: #EBF8FF;
+    border: 2px solid #BEE3F8;
+    border-radius: 16px;
+    padding: 25px;
+}
+
+.notice-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2C5282;
+    margin: 0 0 15px;
+}
+
+.notice-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.notice-list li {
+    color: #2C5282;
+    font-size: 0.95rem;
+    line-height: 1.8;
+}
+
+/* ============================================
+   반응형
+   ============================================ */
+@media (max-width: 1024px) {
+    .download-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .admin-nav {
+        flex-direction: column;
+        gap: 15px;
+        padding: 15px;
+    }
+
+    .admin-nav-menu {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .admin-nav-item {
+        padding: 8px 12px;
+        font-size: 0.85rem;
+    }
+
+    .export-content {
+        padding: 20px 15px;
+    }
+
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .page-title {
+        font-size: 1.5rem;
+    }
+
+    .download-all-btn {
+        width: 100%;
+    }
+
+    .date-range-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .date-separator {
+        display: none;
+    }
+
+    .date-input {
+        width: 100%;
+    }
+
+    .quick-date-btns {
+        margin-left: 0;
+        flex-wrap: wrap;
+    }
+
+    .quick-btn {
+        flex: 1;
+        min-width: 80px;
+        text-align: center;
+    }
+
+    .download-card-header {
+        padding: 20px 20px 10px;
+    }
+
+    .download-icon {
+        font-size: 2rem;
+    }
+
+    .download-card-body {
+        padding: 0 20px 15px;
+    }
+
+    .download-card-footer {
+        padding: 10px 20px 20px;
+    }
+
+    .count-value {
+        font-size: 1.5rem;
+    }
+}
