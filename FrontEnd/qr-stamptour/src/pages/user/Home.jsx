@@ -3,7 +3,7 @@ import React from 'react';
 import '../../styles/Home.css'; 
 import frontImage from '../../assets/images/앞화면.png';
 import { useNavigate } from 'react-router-dom';
-import { isAuthenticated,getCurrentUser,logout } from '../../services/authApi';
+import { isAuthenticated,getCurrentUser,logout, getStoredUser } from '../../services/authApi';
 import { getAllBooths } from '../../services/boothApi';
 import { getMyStamps } from '../../services/stampApi';
 import KakaoMap from '../../components/KakaoMap';  // ✨ 카카오맵 추가
@@ -42,7 +42,7 @@ const Home = () => {
     useEffect(() => {
         const checkAuth = () => {
             if (isAuthenticated()) {
-                const storedUser = getCurrentUser();
+                const storedUser = getStoredUser();
                 setIsLoggedIn(true);
                 setUser(storedUser);
             }
