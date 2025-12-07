@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 venv/
 .env
+.env.local
 
 # 시스템 파일 무시
 .DS_Store
