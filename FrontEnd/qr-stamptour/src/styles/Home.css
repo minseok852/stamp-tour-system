@@ -1576,3 +1576,185 @@
     }
 }
 
+/* ⭐ 완주 축하 배너 */
+.completion-banner {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%);
+    border-radius: 20px;
+    padding: 25px 30px;
+    margin-bottom: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 8px 32px rgba(255, 165, 0, 0.3);
+    animation: celebrationPulse 2s ease-in-out infinite;
+}
+
+@keyframes celebrationPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.01); }
+}
+
+.completion-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.completion-trophy {
+    font-size: 3.5rem;
+    animation: trophyBounce 1s ease-in-out infinite;
+}
+
+@keyframes trophyBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+}
+
+.completion-text {
+    color: #fff;
+}
+
+.completion-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 5px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.completion-date {
+    font-size: 1rem;
+    margin: 0;
+    opacity: 0.9;
+}
+
+.certificate-button {
+    background: #fff;
+    color: #FF8C00;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+}
+
+.certificate-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* ⭐ 완주 시 Progress Bar 스타일 */
+.progress-bar-container.completed {
+    border: 2px solid #FFD700;
+}
+
+.progress-bar-fill.completed {
+    background: linear-gradient(90deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%);
+}
+
+.progress-count.completed {
+    color: #FF8C00;
+    font-weight: 700;
+}
+
+.completed-badge {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-left: 12px;
+    animation: badgeGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes badgeGlow {
+    0%, 100% { box-shadow: 0 0 5px rgba(255, 165, 0, 0.5); }
+    50% { box-shadow: 0 0 15px rgba(255, 165, 0, 0.8); }
+}
+
+/* ⭐ 완주 시 스탬프 그리드 스타일 */
+.stamp-grid.completed {
+    position: relative;
+}
+
+.stamp-card.all-completed {
+    border: 2px solid #FFD700;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+}
+
+/* ⭐ 완주 버튼 영역 */
+.completion-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.submit-button.completed {
+    background: linear-gradient(135deg, #48BB78, #38A169);
+    color: #fff;
+    cursor: default;
+    opacity: 1 !important;
+}
+
+.submit-button.completed:hover {
+    transform: none;
+}
+
+.certificate-download-button {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: #fff;
+    border: none;
+    padding: 18px 50px;
+    border-radius: 16px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(255, 165, 0, 0.4);
+}
+
+.certificate-download-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(255, 165, 0, 0.5);
+}
+
+/* ⭐ 모바일 반응형 */
+@media (max-width: 768px) {
+    .completion-banner {
+        flex-direction: column;
+        text-align: center;
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .completion-banner-content {
+        flex-direction: column;
+    }
+
+    .completion-trophy {
+        font-size: 3rem;
+    }
+
+    .completion-title {
+        font-size: 1.2rem;
+    }
+
+    .certificate-button {
+        width: 100%;
+        padding: 12px 20px;
+    }
+
+    .completion-buttons {
+        width: 100%;
+    }
+
+    .certificate-download-button {
+        width: 100%;
+        padding: 16px 30px;
+        font-size: 1.1rem;
+    }
+}

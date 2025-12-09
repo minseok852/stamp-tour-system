@@ -1,5 +1,5 @@
 # app/api/v1/endpoints/stamps.py
-# 스탬프 찍기(QR 스캔), 내 스탬프 조회 (보안 강화 버전)
+# 스탬프 찍기(QR 스캔), 내 스탬프 조회 (Settings 연동 버전)
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from app.api.v1.dependencies import get_current_user
 from app.models.stamp import Stamp
 from app.models.booth import Booth
 from app.models.user import User
+from app.models.event import Event  # ⭐ Event 모델 추가
 from app.schemas.stamp import StampScanRequest, StampResponse
 
 router = APIRouter()
@@ -38,12 +39,31 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
     return distance
 
 
-# 1. QR 스캔 및 스탬프 적립 (보안 강화)
+def get_event_settings(db: Session):
+    """
+    Event 테이블에서 GPS 설정 가져오기
+    """
+    event = db.query(Event).first()
+    if event:
+        return {
+            "gps_enabled": event.gps_enabled if hasattr(event, 'gps_enabled') else True,
+            "gps_max_distance": event.gps_max_distance if hasattr(event, 'gps_max_distance') else 50.0,
+            "required_stamps": event.stamp_count if hasattr(event, 'stamp_count') else 15
+        }
+    # 기본값 (Event 테이블에 데이터 없을 경우)
+    return {
+        "gps_enabled": True,
+        "gps_max_distance": 50.0,  # 기본 50m
+        "required_stamps": 15
+    }
+
+
+# 1. QR 스캔 및 스탬프 적립 (Settings 연동)
 @router.post("/scan", response_model=StampResponse)
 def scan_qr_and_collect_stamp(
     scan_data: StampScanRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # JWT 인증 필수!
+    current_user: User = Depends(get_current_user)
 ):
     """
     QR 코드 스캔 및 스탬프 적립
@@ -52,11 +72,17 @@ def scan_qr_and_collect_stamp(
     1. JWT 토큰 인증 (자동)
     2. QR 코드 유효성
     3. QR PIN 검증
-    4. GPS 5m 이내
+    4. GPS 거리 검증 (Settings에서 설정한 거리)
     5. 중복 수집 방지
     """
     
-    # JWT에서 student_id 자동 추출 (보안!)
+    # ⭐ Settings에서 GPS 설정 가져오기
+    settings = get_event_settings(db)
+    gps_enabled = settings["gps_enabled"]
+    max_distance = settings["gps_max_distance"]
+    required_stamps = settings["required_stamps"]
+    
+    # JWT에서 student_id 자동 추출
     student_id = current_user.student_id
     
     # 1. QR 코드로 부스 찾기
@@ -68,28 +94,29 @@ def scan_qr_and_collect_stamp(
             detail="유효하지 않은 QR 코드입니다."
         )
     
-    # 2. QR PIN 검증 (보안 강화!)
+    # 2. QR PIN 검증
     if booth.qr_pin != scan_data.qr_pin:
         raise HTTPException(
             status_code=400,
             detail="QR 핀번호가 일치하지 않습니다."
         )
     
-    # 3. GPS 위치 검증 (5m 이내)
-    distance = calculate_distance(
-        scan_data.user_latitude,
-        scan_data.user_longitude,
-        float(booth.latitude),
-        float(booth.longitude)
-    )
-    
-    if distance > 50000.0: #5미터를 원할땐 5.0
-        raise HTTPException(
-            status_code=400,
-            detail=f"부스로부터 {distance:.1f}m 떨어져 있습니다. 5m 이내에서 스캔해주세요."
+    # 3. GPS 위치 검증 (⭐ Settings 값 사용!)
+    if gps_enabled:
+        distance = calculate_distance(
+            scan_data.user_latitude,
+            scan_data.user_longitude,
+            float(booth.latitude),
+            float(booth.longitude)
         )
+        
+        if distance > max_distance:
+            raise HTTPException(
+                status_code=400,
+                detail=f"부스로부터 {distance:.1f}m 떨어져 있습니다. {max_distance:.0f}m 이내에서 스캔해주세요."
+            )
     
-    # 4. 중복 체크 (이미 찍은 스탬프인지)
+    # 4. 중복 체크
     existing_stamp = db.query(Stamp).filter(
         Stamp.student_id == student_id,
         Stamp.booth_id == booth.booth_id
@@ -123,7 +150,7 @@ def scan_qr_and_collect_stamp(
         "acquired_at": new_stamp.acquired_at,
         "method": new_stamp.method,
         "total_stamps": total_stamps,
-        "message": f"🎉 [{booth.booth_name}] 스탬프 획득! (총 {total_stamps}/14)"
+        "message": f"🎉 [{booth.booth_name}] 스탬프 획득! (총 {total_stamps}/{required_stamps})"
     }
 
 
@@ -133,13 +160,17 @@ def collect_stamp_by_pin(
     booth_id: int,
     pin: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # JWT 인증!
+    current_user: User = Depends(get_current_user)
 ):
     """
-    PIN 번호로 스탬프 적립 (관리자가 QR 오류 시 사용)
+    PIN 번호로 스탬프 적립 (GPS 오류 시 사용)
     """
     
-    student_id = current_user.student_id  # JWT에서 추출
+    # ⭐ Settings에서 필요 스탬프 수 가져오기
+    settings = get_event_settings(db)
+    required_stamps = settings["required_stamps"]
+    
+    student_id = current_user.student_id
     
     # 1. 부스 찾기
     booth = db.query(Booth).filter(Booth.booth_id == booth_id).first()
@@ -184,7 +215,7 @@ def collect_stamp_by_pin(
         "acquired_at": new_stamp.acquired_at,
         "method": new_stamp.method,
         "total_stamps": total_stamps,
-        "message": f"🎉 [{booth.booth_name}] 스탬프 획득! (총 {total_stamps}/14)"
+        "message": f"🎉 [{booth.booth_name}] 스탬프 획득! (총 {total_stamps}/{required_stamps})"
     }
 
 
@@ -192,12 +223,12 @@ def collect_stamp_by_pin(
 @router.get("/my-stamps", response_model=List[StampResponse])
 def get_my_stamps(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # JWT 인증!
+    current_user: User = Depends(get_current_user)
 ):
     """
     내가 획득한 스탬프 목록 조회
     """
-    student_id = current_user.student_id  # JWT에서 추출
+    student_id = current_user.student_id
     
     stamps = db.query(Stamp).filter(Stamp.student_id == student_id).all()
     
@@ -221,15 +252,18 @@ def get_my_stamps(
 @router.get("/completion-status")
 def check_completion_status(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # JWT 인증!
+    current_user: User = Depends(get_current_user)
 ):
     """
     완주 여부 확인
     """
-    student_id = current_user.student_id  # JWT에서 추출
+    # ⭐ Settings에서 필요 스탬프 수 가져오기
+    settings = get_event_settings(db)
+    required_stamps = settings["required_stamps"]
+    
+    student_id = current_user.student_id
     
     total_stamps = db.query(Stamp).filter(Stamp.student_id == student_id).count()
-    required_stamps = 15  # 필요한 스탬프 개수
     
     is_completed = total_stamps >= required_stamps
     
@@ -247,12 +281,12 @@ def check_completion_status(
 @router.get("/booths-status")
 def get_booths_with_status(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # JWT 인증!
+    current_user: User = Depends(get_current_user)
 ):
     """
     모든 부스 목록 + 내가 찍은 스탬프 표시
     """
-    student_id = current_user.student_id  # JWT에서 추출
+    student_id = current_user.student_id
     
     booths = db.query(Booth).all()
     my_stamps = db.query(Stamp).filter(Stamp.student_id == student_id).all()
@@ -274,4 +308,40 @@ def get_booths_with_status(
         "total_booths": len(booths),
         "collected_count": len(my_stamps),
         "booths": result
+    }
+
+# ============================================
+# 아래 코드를 stamps.py 또는 별도 파일에 추가
+# 일반 사용자도 접근 가능한 공개 설정 API
+# ============================================
+
+# 6. 공개 이벤트 설정 조회 (GPS 설정 등)
+@router.get("/event-settings")
+def get_public_event_settings(db: Session = Depends(get_db)):
+    """
+    공개 이벤트 설정 조회 (로그인 불필요)
+    - GPS 검증 사용 여부
+    - 필요 스탬프 수
+    - 이벤트 활성화 여부
+    """
+    from app.models.event import Event
+    
+    event = db.query(Event).first()
+    
+    if event:
+        return {
+            "gps_enabled": event.gps_enabled if hasattr(event, 'gps_enabled') else True,
+            "gps_max_distance": event.gps_max_distance if hasattr(event, 'gps_max_distance') else 50.0,
+            "required_stamps": event.stamp_count if hasattr(event, 'stamp_count') else 15,
+            "is_active": event.is_active if hasattr(event, 'is_active') else True,
+            "event_name": event.event_name if hasattr(event, 'event_name') else "스탬프 투어"
+        }
+    
+    # 기본값 반환
+    return {
+        "gps_enabled": True,
+        "gps_max_distance": 50.0,
+        "required_stamps": 15,
+        "is_active": True,
+        "event_name": "스탬프 투어"
     }
