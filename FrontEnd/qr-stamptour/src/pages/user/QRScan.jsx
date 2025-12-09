@@ -1,9 +1,9 @@
 // src/pages/user/QRScan.jsx
-// QR코드 스캔 및 위치 인증 화면 - 수정 버전
-import React, { useState, useEffect } from 'react';
+// QR코드 스캔 - 1회 스캔 후 중지, GPS 설정 연동
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { collectStampByQR, collectStampByPin } from '../../services/stampApi';
+import { collectStampByQR, collectStampByPin, getEventSettings } from '../../services/stampApi';
 import { isAuthenticated } from '../../services/authApi';
 import PinFallbackModal from '../../components/PinFallbackModal';
 import '../../styles/Qrscan.css';
@@ -15,8 +15,22 @@ const QRScan = () => {
     const [success, setSuccess] = useState(null);
     const [showPinFallback, setShowPinFallback] = useState(false);
     const [lastScannedData, setLastScannedData] = useState({ boothId: null, qrCode: '' });
+    
+    // GPS 설정 상태
+    const [gpsEnabled, setGpsEnabled] = useState(true);
+    const [settingsLoaded, setSettingsLoaded] = useState(false);
+    
+    // ⭐ Ref로 최신 값 유지 + 중복 방지
+    const gpsEnabledRef = useRef(true);
+    const isProcessingRef = useRef(false);  // 처리 중 플래그
+    const scannerRef = useRef(null);  // 스캐너 참조
+    const initCalledRef = useRef(false);  // 초기화 중복 방지
 
     useEffect(() => {
+        // 이미 초기화됐으면 스킵
+        if (initCalledRef.current) return;
+        initCalledRef.current = true;
+
         // 로그인 확인
         if (!isAuthenticated()) {
             alert('로그인이 필요합니다.');
@@ -24,18 +38,44 @@ const QRScan = () => {
             return;
         }
 
-        // QR 스캔 초기화
-        initQRScanner();
+        // Settings 로드 후 스캐너 초기화
+        loadSettingsAndInitScanner();
 
         return () => {
             // 컴포넌트 언마운트 시 스캐너 정리
-            if (window.html5QrcodeScanner) {
-                window.html5QrcodeScanner.clear().catch(console.error);
-            }
+            cleanupScanner();
         };
-    }, [navigate]);
+    }, []);
+
+    const cleanupScanner = () => {
+        if (scannerRef.current) {
+            scannerRef.current.clear().catch(console.error);
+            scannerRef.current = null;
+        }
+    };
+
+    const loadSettingsAndInitScanner = async () => {
+        try {
+            const settings = await getEventSettings();
+            console.log('GPS 설정 로드 완료:', settings);
+            
+            const isGpsEnabled = settings.gps_enabled ?? settings.gpsEnabled ?? true;
+            setGpsEnabled(isGpsEnabled);
+            gpsEnabledRef.current = isGpsEnabled;
+        } catch (err) {
+            console.error('Settings 로드 실패:', err);
+            setGpsEnabled(true);
+            gpsEnabledRef.current = true;
+        } finally {
+            setSettingsLoaded(true);
+            initQRScanner();
+        }
+    };
 
     const initQRScanner = () => {
+        // 이미 스캐너가 있으면 스킵
+        if (scannerRef.current) return;
+
         const scanner = new Html5QrcodeScanner(
             "qr-reader",
             { 
@@ -47,32 +87,36 @@ const QRScan = () => {
         );
 
         scanner.render(onScanSuccess, onScanError);
-        window.html5QrcodeScanner = scanner;
+        scannerRef.current = scanner;
     };
 
     const onScanSuccess = async (decodedText) => {
-        // 이미 처리 중이면 무시
-        if (scanning) return;
+        // ⭐ 이미 처리 중이면 무시 (중복 스캔 방지)
+        if (isProcessingRef.current) {
+            console.log('이미 처리 중 - 스킵');
+            return;
+        }
         
+        // 처리 시작 플래그
+        isProcessingRef.current = true;
         setScanning(true);
         setError('');
         setSuccess(null);
 
         console.log('스캔된 내용:', decodedText);
 
-        // ⭐ URL 형식인지 확인
-        // 예: https://domain.com/stamp/collect?booth_id=1&qr_code=BOOTH_01
+        // ⭐ 스캐너 즉시 중지 (추가 스캔 방지)
+        cleanupScanner();
+
         try {
             let boothId = null;
             let qrCode = '';
 
             if (decodedText.includes('stamp/collect')) {
-                // URL 형식 QR 코드
                 const url = new URL(decodedText);
                 boothId = url.searchParams.get('booth_id');
                 qrCode = url.searchParams.get('qr_code') || '';
             } else if (decodedText.match(/^BOOTH_\d+$/)) {
-                // 기존 형식: BOOTH_01
                 qrCode = decodedText;
             } else {
                 throw new Error('올바른 QR 코드가 아닙니다.');
@@ -84,11 +128,23 @@ const QRScan = () => {
 
             setLastScannedData({ boothId, qrCode });
 
-            // GPS 위치 가져오기
+            // ref에서 최신 GPS 설정 가져오기
+            const currentGpsEnabled = gpsEnabledRef.current;
+            console.log('현재 GPS 설정:', currentGpsEnabled);
+            
+            if (!currentGpsEnabled) {
+                // GPS 비활성화 → 바로 스탬프 수집
+                console.log('GPS 비활성화 - 바로 스탬프 수집');
+                await collectStamp(qrCode, boothId, 0, 0);
+                return;
+            }
+
+            // GPS 활성화 → 위치 가져오기
             if (!navigator.geolocation) {
                 setError('GPS를 지원하지 않는 브라우저입니다.');
                 setShowPinFallback(true);
                 setScanning(false);
+                isProcessingRef.current = false;
                 return;
             }
 
@@ -106,6 +162,7 @@ const QRScan = () => {
                     setError('GPS 위치를 가져올 수 없습니다. PIN을 입력해주세요.');
                     setShowPinFallback(true);
                     setScanning(false);
+                    isProcessingRef.current = false;
                 },
                 {
                     enableHighAccuracy: true,
@@ -117,41 +174,31 @@ const QRScan = () => {
             console.error('QR 파싱 오류:', err);
             setError(err.message || '올바른 QR 코드가 아닙니다.');
             setScanning(false);
+            isProcessingRef.current = false;
         }
     };
 
     const onScanError = (errorMessage) => {
         // QR 스캔 중 발생하는 일반적인 에러는 무시
-        // (카메라가 QR을 찾는 중)
     };
 
     const collectStamp = async (qrCode, boothId, latitude, longitude) => {
         try {
             const result = await collectStampByQR(qrCode, latitude, longitude);
             
-            // 성공!
             setSuccess(result);
             setError('');
-            
-            // 스캐너 중지
-            if (window.html5QrcodeScanner) {
-                await window.html5QrcodeScanner.clear().catch(console.error);
-            }
         } catch (err) {
             console.error('스탬프 수집 실패:', err);
             const errorDetail = err.response?.data?.detail || '스탬프 수집에 실패했습니다.';
             
-            // 에러 메시지에 따라 처리
             if (errorDetail.includes('떨어져') || errorDetail.includes('GPS') || errorDetail.includes('위치')) {
-                // GPS 거리 오류 → PIN 입력 모달 표시
                 setError(errorDetail);
                 setShowPinFallback(true);
             } else if (errorDetail.includes('핀번호') || errorDetail.includes('PIN')) {
-                // PIN 오류 → PIN 입력 모달 표시
                 setError('PIN 번호를 입력해주세요.');
                 setShowPinFallback(true);
             } else if (errorDetail.includes('이미')) {
-                // 이미 획득한 스탬프
                 setError(errorDetail);
             } else {
                 setError(errorDetail);
@@ -159,6 +206,7 @@ const QRScan = () => {
             }
         } finally {
             setScanning(false);
+            isProcessingRef.current = false;
         }
     };
 
@@ -170,11 +218,6 @@ const QRScan = () => {
         setShowPinFallback(false);
         setSuccess(result);
         setError('');
-        
-        // 스캐너 중지
-        if (window.html5QrcodeScanner) {
-            window.html5QrcodeScanner.clear().catch(console.error);
-        }
     };
 
     const handleGoHome = () => {
@@ -185,6 +228,7 @@ const QRScan = () => {
         setSuccess(null);
         setError('');
         setScanning(false);
+        isProcessingRef.current = false;
         initQRScanner();
     };
 
@@ -198,7 +242,6 @@ const QRScan = () => {
             </div>
 
             <div className="qr-scan-container">
-                {/* 성공 화면 */}
                 {success ? (
                     <div className="scan-success">
                         <div className="success-icon">🎉</div>
@@ -233,6 +276,11 @@ const QRScan = () => {
                         <div className="scan-info">
                             <p>부스의 QR 코드를 스캔하세요</p>
                             <p className="scan-hint">📱 QR 코드를 카메라 중앙에 맞춰주세요</p>
+                            {settingsLoaded && (
+                                <p className="gps-status">
+                                    {gpsEnabled ? '📍 GPS 검증 활성화' : '🔓 GPS 검증 비활성화'}
+                                </p>
+                            )}
                         </div>
 
                         <div id="qr-reader" className="qr-reader"></div>
@@ -247,6 +295,12 @@ const QRScan = () => {
                         {error && (
                             <div className="error-box">
                                 <p>{error}</p>
+                                <button 
+                                    className="retry-btn"
+                                    onClick={handleScanAgain}
+                                >
+                                    다시 스캔하기
+                                </button>
                             </div>
                         )}
 
@@ -272,7 +326,6 @@ const QRScan = () => {
                 )}
             </div>
 
-            {/* PIN 입력 모달 */}
             {showPinFallback && (
                 <PinFallbackModal
                     boothId={lastScannedData.boothId}

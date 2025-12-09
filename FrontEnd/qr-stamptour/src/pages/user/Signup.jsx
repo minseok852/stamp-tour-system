@@ -234,7 +234,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
               <label className="login-label">학번 (아이디)</label>
               <div className="input-with-button">
                 <div style={{ position: 'relative', flex: 1 }}>
-                  <span className="login-input-icon">🎓</span>
+                  
                   <input 
                     type="text"
                     className="login-input"
@@ -259,7 +259,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
             <div className="login-input-group">
               <label className="login-label">이름</label>
               <div style={{ position: 'relative' }}>
-                <span className="login-input-icon">👤</span>
+                
                 <input 
                   type="text"
                   className="login-input"
@@ -282,7 +282,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
             <div className="login-input-group">
               <label className="login-label">비밀번호</label>
               <div style={{ position: 'relative' }}>
-                <span className="login-input-icon">🔒</span>
+                
                 <input 
                   type="password"
                   className="login-input"
@@ -293,7 +293,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
               </div>
               {passwordStrength && (
                 <div className={`password-strength ${passwordStrength}`}>
-                  {passwordStrength === 'weak' && '⚠️ 약한 비밀번호입니다'}
+                  
                   {passwordStrength === 'medium' && '✓ 보통 수준의 비밀번호입니다'}
                   {passwordStrength === 'strong' && '✓✓ 강력한 비밀번호입니다!'}
                 </div>
@@ -303,7 +303,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
             <div className="login-input-group">
               <label className="login-label">비밀번호 확인</label>
               <div style={{ position: 'relative' }}>
-                <span className="login-input-icon">🔒</span>
+                
                 <input 
                   type="password"
                   className="login-input"
@@ -331,7 +331,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
               <label className="login-label">전화번호</label>
               <div className="input-with-button">
                 <div style={{ position: 'relative', flex: 1 }}>
-                  <span className="login-input-icon">📱</span>
+                  
                   <input 
                     type="tel"
                     className="login-input"
@@ -354,7 +354,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
               <label className="login-label">인증번호 (테스트: 123456)</label>
               <div className="input-with-button">
                 <div style={{ position: 'relative', flex: 1 }}>
-                  <span className="login-input-icon">🔢</span>
+                  
                   <input 
                     type="text"
                     className="login-input"
@@ -392,7 +392,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
             <div className="login-input-group">
               <label className="login-label">학과</label>
               <div style={{ position: 'relative' }}>
-                <span className="login-input-icon">🏫</span>
+                
                 <select 
                   className="login-input"
                   value={signupForm.department}
@@ -447,7 +447,7 @@ const Signup = ({ isOpen, onClose, onSignupComplete }) => {
               <div className="login-input-group">
                 <label className="login-label">학년</label>
                 <div style={{ position: 'relative' }}>
-                  <span className="login-input-icon">📚</span>
+                  
                   <select 
                     className="login-input"
                     value={signupForm.grade}

@@ -3,7 +3,7 @@
 import axios from 'axios';
 
 // 백엔드 FastAPI 서버의 기본 URL을 정의합니다.
-const BASE_URL = 'http://127.0.0.1:8000/api/v1'; 
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1';
 
 const api = axios.create({
     baseURL: BASE_URL,

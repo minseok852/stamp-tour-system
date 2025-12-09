@@ -1,4 +1,4 @@
-// Home.jsx - 스탬프 이미지 표시 수정 버전
+// Home.jsx - 완주 축하 기능 추가 버전
 import React from 'react';
 import '../../styles/Home.css'; 
 import frontImage from '../../assets/images/앞화면.png';
@@ -6,14 +6,13 @@ import { useNavigate } from 'react-router-dom';
 import { isAuthenticated,getCurrentUser,logout, getStoredUser } from '../../services/authApi';
 import { getAllBooths } from '../../services/boothApi';
 import { getMyStamps } from '../../services/stampApi';
-import KakaoMap from '../../components/KakaoMap';  // ✨ 카카오맵 추가
+import KakaoMap from '../../components/KakaoMap';
 
-// ✨ Vite용 동적 이미지 로드 - 모든 스탬프 이미지를 미리 로드
+// Vite용 동적 이미지 로드 - 모든 스탬프 이미지를 미리 로드
 const stampImages = import.meta.glob('../../assets/images/stamps/stamp_*.png', { eager: true });
 
 // 이미지 경로를 ID로 매핑하는 함수
 const getStampImage = (id) => {
-    // glob 결과에서 해당 ID의 이미지 찾기
     const key = Object.keys(stampImages).find(k => k.includes(`stamp_${id}.png`));
     return key ? stampImages[key].default : null;
 };
@@ -28,15 +27,19 @@ const Home = () => {
     const [submitForm, setSubmitForm] = useState({ name: '', studentId: '' });
     const [loading, setLoading]=useState(true);
 
-    // ✨ 지도 관련 상태 추가
-    const [selectedBooth, setSelectedBooth] = useState(null);  // 선택된 부스 정보
-    const [congestionData, setCongestionData] = useState({});  // 부스별 혼잡도 데이터
+    // 지도 관련 상태
+    const [selectedBooth, setSelectedBooth] = useState(null);
+    const [congestionData, setCongestionData] = useState({});
 
     const stampSectionRef = useRef(null);
 
-     // ✨ 드롭다운 메뉴 상태 추가
+    // 드롭다운 메뉴 상태
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const profileMenuRef = useRef(null);
+
+    // ⭐ 완주 상태 추가
+    const [isCompleted, setIsCompleted] = useState(false);
+    const [completedAt, setCompletedAt] = useState(null);
 
     // 로그인 상태 확인
     useEffect(() => {
@@ -51,7 +54,8 @@ const Home = () => {
     }, []);
 
     const [stamps, setStamps] = useState([]);
-    //프로필 클릭 시 닫기
+    
+    // 프로필 클릭 시 닫기
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
@@ -70,7 +74,6 @@ const Home = () => {
                 setLoading(true);
                 const boothsData = await getAllBooths();
                 
-                // API 데이터를 stamps 형식으로 변환
                 const stampsData = boothsData.map(booth => ({
                     id: booth.booth_id,
                     location: booth.booth_name,
@@ -92,7 +95,7 @@ const Home = () => {
         loadBooths();
     }, []);
 
-    // ✨ 새로 추가: 내가 모은 스탬프 불러오기 (로그인 시)
+    // 내가 모은 스탬프 불러오기 (로그인 시)
     useEffect(() => {
         const loadMyStamps = async () => {
             if (!isLoggedIn || stamps.length === 0) return;
@@ -100,10 +103,8 @@ const Home = () => {
             try {
                 const myStampsData = await getMyStamps();
                 
-                // 내가 모은 스탬프 ID 목록
                 const collectedBoothIds = myStampsData.map(stamp => stamp.booth_id);
                 
-                // stamps 배열 업데이트 (collected 상태 변경)
                 setStamps(prevStamps => 
                     prevStamps.map(stamp => ({
                         ...stamp,
@@ -111,25 +112,23 @@ const Home = () => {
                     }))
                 );
             } catch (error) {
-                // console.error('내 스탬프 로딩 실패:', error);
-                // 에러 시 조용히 무시 (401 에러 등)
+                // 에러 시 조용히 무시
             }
         };
         
         loadMyStamps();
-    }, [isLoggedIn, stamps.length]); // isLoggedIn이나 stamps가 변경되면 실행
+    }, [isLoggedIn, stamps.length]);
 
-    // ✨ 혼잡도 데이터 로드 (30초마다 갱신)
+    // 혼잡도 데이터 로드 (30초마다 갱신)
     useEffect(() => {
         const loadCongestion = async () => {
             try {
-                const response = await fetch('http://127.0.0.1:8000/api/v1/congestion');
+                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1'}/congestion`);
                 if (response.ok) {
                     const data = await response.json();
                     setCongestionData(data);
                 }
             } catch (error) {
-                // 혼잡도 로드 실패 시 테스트 데이터 사용
                 const testData = {};
                 stamps.forEach(s => {
                     testData[s.id] = Math.floor(Math.random() * 20);
@@ -140,7 +139,7 @@ const Home = () => {
 
         if (stamps.length > 0) {
             loadCongestion();
-            const interval = setInterval(loadCongestion, 30000); // 30초마다 갱신
+            const interval = setInterval(loadCongestion, 30000);
             return () => clearInterval(interval);
         }
     }, [stamps.length]);
@@ -171,15 +170,12 @@ const Home = () => {
         stampSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
-    // 스탬프 클릭 동작 변경
     const handleStampClick = (id) => {
         if (!isLoggedIn) {
             alert('로그인이 필요합니다!');
             navigate('/login');
             return;
         }
-        
-        // 실제로는 QR 스캔 화면으로 이동해야 함
         navigate('/qr-scan');
     };
 
@@ -188,14 +184,14 @@ const Home = () => {
         setIsLoggedIn(false);
         setUser(null);
         setShowProfileMenu(false);
-        // 스탬프 초기화
+        setIsCompleted(false);
+        setCompletedAt(null);
         setStamps(stamps.map(stamp => ({ ...stamp, collected: false })));
         alert('로그아웃되었습니다.');
     };
 
-    //관리자 페이지 이동 함수
     const handleAdminPage = () => {
-        setShowProfileMenu(false); // 메뉴 닫기
+        setShowProfileMenu(false);
         navigate('/admin/dashboard');
     };
 
@@ -205,12 +201,19 @@ const Home = () => {
             alert(`15개의 스탬프를 모두 모아야 제출할 수 있습니다! (현재 ${collectedCount}/15)`);
             return;
         }
-        alert(`${submitForm.name}님! 15개의 스탬프를 모두 모으셨습니다!`);
-        // 실제로는 완주 제출 API 호출
-        // submitCompletion(submitForm);
+        // ⭐ 버튼 클릭 시 완주 상태로 변경
+        setIsCompleted(true);
+        setCompletedAt(new Date().toISOString());
+        alert(`${user?.name}님! 완주를 축하합니다! 🎉`);
     };
 
-    //관리자 여부 확인
+    // ⭐ 완주 날짜 포맷팅
+    const formatCompletedDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+    };
+
     const isAdmin = user?.role === 'admin' || user?.is_admin === true;
 
     return (
@@ -241,10 +244,9 @@ const Home = () => {
                             <div className="user-info">
                                 <div className="user-name">{user?.name}</div>
                                 <div className="user-stamps">
-                                    🏆 {collectedCount}/{stamps.length} 스탬프
+                                    {isCompleted ? '🏆 완주!' : `🏆 ${collectedCount}/${stamps.length} 스탬프`}
                                 </div>
                             </div>
-                            {/* ✅ 드롭다운 컨테이너 - 메뉴가 안에 있어야 함 */}
                             <div 
                                 className="profile-dropdown-container" 
                                 ref={profileMenuRef} 
@@ -256,7 +258,6 @@ const Home = () => {
                                     {user?.name?.charAt(0)}
                                 </div>
                                 
-                                {/* ✅ 드롭다운 메뉴 - 컨테이너 안에 위치 */}
                                 {showProfileMenu && (
                                     <div className="profile-dropdown-menu">
                                         <div className="dropdown-header">
@@ -331,7 +332,7 @@ const Home = () => {
                 </div>
             </nav>
 
-            {/* ✨ 모바일용 프로필 메뉴 (하단에서 슬라이드) */}
+            {/* 모바일용 프로필 메뉴 */}
             {showProfileMenu && isLoggedIn && (
                 <div className="mobile-profile-overlay" onClick={() => setShowProfileMenu(false)}>
                     <div 
@@ -429,38 +430,51 @@ const Home = () => {
                             </div>
                         </div>
 
+                        {/* ⭐ 완주 축하 배너 */}
+                        {isLoggedIn && isCompleted && (
+                            <div className="completion-banner">
+                                <div className="completion-banner-content">
+                                    <div className="completion-trophy">🏆</div>
+                                    <div className="completion-text">
+                                        <h3 className="completion-title">축하합니다! 완주하셨습니다! 🎉</h3>
+                                        <p className="completion-date">
+                                            완주일: {formatCompletedDate(completedAt)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Progress Bar */}
                         <div className="progress-section">
-                            <div className="progress-bar-container">
+                            <div className={`progress-bar-container ${isCompleted ? 'completed' : ''}`}>
                                 <div 
-                                    className="progress-bar-fill" 
+                                    className={`progress-bar-fill ${isCompleted ? 'completed' : ''}`}
                                     style={{ width: `${progressPercentage}%` }}
                                 >
-                                    {collectedCount > 0 && `${Math.round(progressPercentage)}%`}
+                                    {collectedCount > 0 && (isCompleted ? '🎉 완주!' : `${Math.round(progressPercentage)}%`)}
                                 </div>
                             </div>
                             <div className="progress-text">
-                                획득한 스탬프: <span className="progress-count">{collectedCount}/{stamps.length}</span>
+                                획득한 스탬프: <span className={`progress-count ${isCompleted ? 'completed' : ''}`}>
+                                    {collectedCount}/{stamps.length}
+                                </span>
+                                {isCompleted && <span className="completed-badge">✔ 완주</span>}
                             </div>
                         </div>
 
-                        
-
                         {/* Stamp Grid */}
-                        <div className="stamp-grid">
+                        <div className={`stamp-grid ${isCompleted ? 'completed' : ''}`}>
                             {stamps.map(stamp => {
-                                // ✨ Vite용 동적 이미지 로드
                                 const stampImage = getStampImage(stamp.id);
 
                                 return (
                                     <div 
                                         key={stamp.id}
-                                        className={`stamp-card ${stamp.collected ? 'collected' : ''}`}
+                                        className={`stamp-card ${stamp.collected ? 'collected' : ''} ${isCompleted ? 'all-completed' : ''}`}
                                         onClick={() => handleStampClick(stamp.id)}
                                     >
-                                        {/* ✅ 핵심 수정: 수집 여부에 따라 완전히 다른 구조 렌더링 */}
                                         {stamp.collected && stampImage ? (
-                                            // 🎯 수집 완료 + 이미지 있음: 이미지 중심 레이아웃
                                             <>
                                                 <div className="stamp-collected-content">
                                                     <img 
@@ -476,7 +490,6 @@ const Home = () => {
                                                 <div className="stamp-check-badge">✔</div>
                                             </>
                                         ) : (
-                                            // 🔘 미수집: 기존 아이콘 디자인
                                             <>
                                                 <div className="stamp-icon-wrapper">
                                                     <div className="stamp-circle">
@@ -493,20 +506,31 @@ const Home = () => {
                             })}
                         </div>
 
-                        {/* Submit Form */}
+                        {/* Submit Form - 완주 여부에 따라 다르게 표시 */}
                         {isLoggedIn && (
                             <div className="submit-form-section">
-                                <form className="submit-form" onSubmit={handleSubmit}>
+                                {isCompleted ? (
+                                    // ⭐ 완주 시: 비활성화된 완주 완료 버튼
                                     <button 
-                                        type="submit"
-                                        className="submit-button"
-                                        disabled={collectedCount < 15}
+                                        className="submit-button completed"
+                                        disabled
                                     >
-                                        {collectedCount < 15
-                                            ? `스탬프를 더 모아주세요 (${collectedCount}/15)` 
-                                            : '완주 인증 제출하기 🎉'}
+                                        ✅ 완주 완료!
                                     </button>
-                                </form>
+                                ) : (
+                                    // 미완주 시: 기존 버튼
+                                    <form className="submit-form" onSubmit={handleSubmit}>
+                                        <button 
+                                            type="submit"
+                                            className="submit-button"
+                                            disabled={collectedCount < 15}
+                                        >
+                                            {collectedCount < 15
+                                                ? `스탬프를 더 모아주세요 (${collectedCount}/15)` 
+                                                : '완주 인증 제출하기 🎉'}
+                                        </button>
+                                    </form>
+                                )}
                             </div>
                         )}
 
@@ -522,14 +546,13 @@ const Home = () => {
                             </div>
                         )}
 
-                        {/* ✨ 카카오맵 섹션 */}
+                        {/* 카카오맵 섹션 */}
                         <div className="map-section">
                             <div className="map-header-box">
                                 <h2 className="map-title">🗺️ 캠퍼스 지도</h2>
                                 <p className="map-subtitle">부스 위치와 실시간 혼잡도를 확인하세요</p>
                             </div>
 
-                            {/* 혼잡도 범례 */}
                             <div className="congestion-legend">
                                 <div className="legend-item">
                                     <span className="legend-dot" style={{background: '#48BB78'}}></span>
@@ -545,7 +568,6 @@ const Home = () => {
                                 </div>
                             </div>
 
-                            {/* 선택된 부스 정보 */}
                             {selectedBooth && (
                                 <div className="selected-booth-panel">
                                     <div className="selected-booth-info">
@@ -564,7 +586,6 @@ const Home = () => {
                                 </div>
                             )}
 
-                            {/* 카카오맵 */}
                             <KakaoMap 
                                 markers={stamps.map(s => ({
                                     id: s.id,

@@ -89,3 +89,20 @@ export const getBoothsWithStatus = async () => {
         throw error;
     }
 };
+
+// 공개 이벤트 설정 조회 (GPS 설정 등)
+export const getEventSettings = async () => {
+    try {
+        const response = await api.get('/stamps/event-settings');
+        return response.data;
+    } catch (error) {
+        console.error('이벤트 설정 조회 실패:', error);
+        // 실패 시 기본값 반환
+        return {
+            gps_enabled: true,
+            gps_max_distance: 50.0,
+            required_stamps: 15,
+            is_active: true
+        };
+    }
+};
