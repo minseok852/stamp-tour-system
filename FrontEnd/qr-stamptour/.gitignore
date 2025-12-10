@@ -27,8 +27,6 @@ dist-ssr
 node_modules/
 dist/
 .env
-.env.local
-.env.*.local
 
 # 백엔드 무시 파일
 venv/
