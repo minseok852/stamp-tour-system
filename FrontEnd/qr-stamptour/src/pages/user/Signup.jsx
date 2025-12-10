@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { checkStudentId, registerUser } from '../../services/authApi';
-import '../../styles/Signupmodal.css'; 
+import '../../styles/SignupModal.css'; 
 
 const Signup = ({ isOpen, onClose, onSignupComplete }) => {
   const navigate = useNavigate();

@@ -6,7 +6,7 @@ import { Html5QrcodeScanner } from 'html5-qrcode';
 import { collectStampByQR, collectStampByPin, getEventSettings } from '../../services/stampApi';
 import { isAuthenticated } from '../../services/authApi';
 import PinFallbackModal from '../../components/PinFallbackModal';
-import '../../styles/Qrscan.css';
+import '../../styles/QRScan.css';
 
 const QRScan = () => {
     const navigate = useNavigate();
