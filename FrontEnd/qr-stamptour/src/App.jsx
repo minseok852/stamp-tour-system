@@ -4,7 +4,7 @@ import Home from './pages/user/Home';
 import Signup from './pages/user/Signup';
 import ForgotPasswordModal from './pages/user/Forgotpasswordmodal';
 import Login from './pages/admin/Login';
-import NotFound from './pages/Notfound';
+import NotFound from './pages/NotFound';
 import QRScan from './pages/user/QRScan';
 import StampCollect from './pages/stamp/StampCollect';
 
