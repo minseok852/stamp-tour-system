@@ -1,14 +1,31 @@
-// Home.jsx - 완주 축하 기능 추가 버전
-import React from 'react';
+// Home.jsx - 성능 최적화 버전
+// ⭐ 최적화 내용:
+// 1. KakaoMap React.lazy로 지연 로딩
+// 2. useMemo/useCallback으로 불필요한 재계산/재생성 방지
+// 3. Promise.all로 데이터 병렬 로딩 (Waterfall 해결)
+// 4. 혼잡도 폴링 최적화 (3분 간격, visibility 체크)
+
+import React, { 
+    useState, 
+    useRef, 
+    useEffect, 
+    useMemo, 
+    useCallback, 
+    lazy, 
+    Suspense 
+} from 'react';
 import '../../styles/Home.css'; 
 import frontImage from '../../assets/images/앞화면.png';
 import { useNavigate } from 'react-router-dom';
-import { isAuthenticated,getCurrentUser,logout, getStoredUser } from '../../services/authApi';
+import { isAuthenticated, logout, getStoredUser } from '../../services/authApi';
 import { getAllBooths } from '../../services/boothApi';
 import { getMyStamps } from '../../services/stampApi';
-import KakaoMap from '../../components/KakaoMap';
+import { getCompletionStatus } from '../../services/completionApi';
 
-// Vite용 동적 이미지 로드 - 모든 스탬프 이미지를 미리 로드
+// ⭐ KakaoMap 지연 로딩 (가장 무거운 컴포넌트)
+const KakaoMap = lazy(() => import('../../components/KakaoMap'));
+
+// Vite용 동적 이미지 로드
 const stampImages = import.meta.glob('../../assets/images/stamps/stamp_*.png', { eager: true });
 
 // 이미지 경로를 ID로 매핑하는 함수
@@ -17,45 +34,59 @@ const getStampImage = (id) => {
     return key ? stampImages[key].default : null;
 };
 
-const { useState, useRef, useEffect } = React;
- 
+// ⭐ 지도 로딩 Fallback 컴포넌트
+const MapLoadingFallback = () => (
+    <div style={{
+        height: '450px',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        background: '#F7FAFC',
+        borderRadius: '20px',
+        border: '2px dashed #CBD5E0'
+    }}>
+        <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '15px' }}>🗺️</div>
+            <div style={{ color: '#718096', fontWeight: '600' }}>지도 로딩 중...</div>
+        </div>
+    </div>
+);
+
 const Home = () => {
     const navigate = useNavigate();
+    
+    // ===== 상태 관리 =====
     const [currentPage, setCurrentPage] = useState('home');
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [user, setUser] = useState(null);
-    const [submitForm, setSubmitForm] = useState({ name: '', studentId: '' });
-    const [loading, setLoading]=useState(true);
-
+    const [loading, setLoading] = useState(true);
+    const [stamps, setStamps] = useState([]);
+    
     // 지도 관련 상태
     const [selectedBooth, setSelectedBooth] = useState(null);
     const [congestionData, setCongestionData] = useState({});
 
-    const stampSectionRef = useRef(null);
-
     // 드롭다운 메뉴 상태
     const [showProfileMenu, setShowProfileMenu] = useState(false);
-    const profileMenuRef = useRef(null);
 
-    // 완주 상태 추가
+    // 완주 상태
     const [isCompleted, setIsCompleted] = useState(false);
     const [completedAt, setCompletedAt] = useState(null);
 
-    // 로그인 상태 확인
+    // Refs
+    const stampSectionRef = useRef(null);
+    const profileMenuRef = useRef(null);
+
+    // ===== ⭐ 로그인 상태 확인 (초기 1회) =====
     useEffect(() => {
-        const checkAuth = () => {
-            if (isAuthenticated()) {
-                const storedUser = getStoredUser();
-                setIsLoggedIn(true);
-                setUser(storedUser);
-            }
-        };
-        checkAuth();
+        if (isAuthenticated()) {
+            const storedUser = getStoredUser();
+            setIsLoggedIn(true);
+            setUser(storedUser);
+        }
     }, []);
 
-    const [stamps, setStamps] = useState([]);
-    
-    // 프로필 클릭 시 닫기
+    // ===== 프로필 메뉴 외부 클릭 감지 =====
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
@@ -67,86 +98,177 @@ const Home = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // 부스 목록 불러오기
+    // ===== ⭐ 혼잡도 로드 함수 (useCallback으로 메모이제이션) =====
+    const loadCongestion = useCallback(async (stampsData) => {
+        if (!stampsData || stampsData.length === 0) return;
+        
+        try {
+            const response = await fetch(
+                `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1'}/congestion`
+            );
+            if (response.ok) {
+                const data = await response.json();
+                setCongestionData(data);
+            }
+        } catch (error) {
+            // 실패 시 조용히 무시 (혼잡도는 필수 아님)
+            console.log('혼잡도 로드 실패 (무시됨)');
+        }
+    }, []);
+
+    // ===== ⭐ 메인 데이터 로딩 (Promise.all로 병렬 실행) =====
     useEffect(() => {
-        const loadBooths = async () => {
+        const loadAllData = async () => {
             try {
                 setLoading(true);
-                const boothsData = await getAllBooths();
                 
+                // ⭐ 병렬로 데이터 로드 (Waterfall 해결)
+                const isUserLoggedIn = isAuthenticated();
+                
+                const [boothsData, myStampsData, completionData] = await Promise.all([
+                    getAllBooths(),
+                    isUserLoggedIn 
+                        ? getMyStamps().catch(() => []) // 실패해도 빈 배열 반환
+                        : Promise.resolve([]),
+                    isUserLoggedIn 
+                        ? getCompletionStatus().catch(() => null) // 실패해도 null 반환
+                        : Promise.resolve(null)
+                ]);
+                if(completionData&&completionData.is_completed){
+                    setIsCompleted(true);
+                }
+                // 수집된 부스 ID 목록
+                const collectedBoothIds = myStampsData.map(stamp => stamp.booth_id);
+                
+                // 부스 데이터 가공 (수집 여부 포함)
                 const stampsData = boothsData.map(booth => ({
                     id: booth.booth_id,
                     location: booth.booth_name,
                     building: booth.location_name,
                     icon: booth.icon || '📍',
-                    collected: false,
+                    collected: collectedBoothIds.includes(booth.booth_id),
                     lat: parseFloat(booth.latitude),
                     lng: parseFloat(booth.longitude)
                 }));
                 
                 setStamps(stampsData);
+                
+                // ⭐ 혼잡도는 메인 로딩 완료 후 별도로 (비동기, 기다리지 않음)
+                loadCongestion(stampsData);
+                
             } catch (error) {
+                console.error('데이터 로드 실패:', error);
                 alert('부스 목록을 불러오는데 실패했습니다.');
             } finally {
                 setLoading(false);
             }
         };
         
-        loadBooths();
+        loadAllData();
+    }, [isLoggedIn, loadCongestion]); // isLoggedIn 변경 시 재실행
+
+    // ===== ⭐ 혼잡도 주기적 갱신 (3분 간격, visibility 체크) =====
+    useEffect(() => {
+        if (stamps.length === 0) return;
+        
+        const interval = setInterval(() => {
+            // ⭐ 페이지가 보일 때만 폴링 (탭 전환 시 불필요한 요청 방지)
+            if (document.visibilityState === 'visible') {
+                loadCongestion(stamps);
+            }
+        }, 180000); // 3분 간격
+        
+        return () => clearInterval(interval);
+    }, [stamps, loadCongestion]);
+
+    // ===== ⭐ useMemo: 계산값 메모이제이션 =====
+    const collectedCount = useMemo(() => 
+        stamps.filter(s => s.collected).length, 
+    [stamps]);
+
+    const progressPercentage = useMemo(() => 
+        stamps.length > 0 ? (collectedCount / stamps.length) * 100 : 0, 
+    [collectedCount, stamps.length]);
+
+    // ⭐ 마커 데이터 메모이제이션 (KakaoMap에 전달)
+    const markers = useMemo(() => 
+        stamps.map(s => ({
+            id: s.id,
+            name: s.location,
+            lat: s.lat,
+            lng: s.lng,
+            icon: s.icon,
+            congestion: congestionData[s.id] || 0
+        })), 
+    [stamps, congestionData]);
+
+    const isAdmin = useMemo(() => 
+        user?.role === 'admin' || user?.is_admin === true, 
+    [user]);
+
+    // ===== ⭐ useCallback: 핸들러 함수 메모이제이션 =====
+    const scrollToStamps = useCallback(() => {
+        stampSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, []);
 
-    // 내가 모은 스탬프 불러오기 (로그인 시)
-    useEffect(() => {
-        const loadMyStamps = async () => {
-            if (!isLoggedIn || stamps.length === 0) return;
-            
-            try {
-                const myStampsData = await getMyStamps();
-                
-                const collectedBoothIds = myStampsData.map(stamp => stamp.booth_id);
-                
-                setStamps(prevStamps => 
-                    prevStamps.map(stamp => ({
-                        ...stamp,
-                        collected: collectedBoothIds.includes(stamp.id)
-                    }))
-                );
-            } catch (error) {
-                // 에러 시 조용히 무시
-            }
-        };
-        
-        loadMyStamps();
-    }, [isLoggedIn, stamps.length]);
-
-    // 혼잡도 데이터 로드 (30초마다 갱신)
-    useEffect(() => {
-        const loadCongestion = async () => {
-            try {
-                const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1'}/congestion`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setCongestionData(data);
-                }
-            } catch (error) {
-                const testData = {};
-                stamps.forEach(s => {
-                    testData[s.id] = Math.floor(Math.random() * 20);
-                });
-                setCongestionData(testData);
-            }
-        };
-
-        if (stamps.length > 0) {
-            loadCongestion();
-            const interval = setInterval(loadCongestion, 30000);
-            return () => clearInterval(interval);
+    const handleStampClick = useCallback((id) => {
+        if (!isLoggedIn) {
+            alert('로그인이 필요합니다!');
+            navigate('/login');
+            return;
         }
-    }, [stamps.length]);
+        navigate('/qr-scan');
+    }, [isLoggedIn, navigate]);
 
-    // 로딩 화면
-    if(loading){
-        return(
+    const handleLogout = useCallback(() => {
+        logout();
+        setIsLoggedIn(false);
+        setUser(null);
+        setShowProfileMenu(false);
+        setIsCompleted(false);
+        setCompletedAt(null);
+        setStamps(prevStamps => prevStamps.map(stamp => ({ ...stamp, collected: false })));
+        alert('로그아웃되었습니다.');
+    }, []);
+
+    const handleAdminPage = useCallback(() => {
+        setShowProfileMenu(false);
+        navigate('/admin/dashboard');
+    }, [navigate]);
+
+    const handleSubmit = useCallback((e) => {
+        e.preventDefault();
+        if (collectedCount < 15) {
+            alert(`15개의 스탬프를 모두 모아야 제출할 수 있습니다! (현재 ${collectedCount}/15)`);
+            return;
+        }
+        setIsCompleted(true);
+        setCompletedAt(new Date().toISOString());
+        alert(`${user?.name}님! 완주를 축하합니다! 🎉`);
+    }, [collectedCount, user?.name]);
+
+    // ⭐ 마커 클릭 핸들러 메모이제이션
+    const handleMarkerClick = useCallback((marker) => {
+        const booth = stamps.find(s => s.id === marker.id);
+        if (booth) {
+            setSelectedBooth(booth);
+        }
+    }, [stamps]);
+
+    const handleCloseBoothPanel = useCallback(() => {
+        setSelectedBooth(null);
+    }, []);
+
+    // 완주 날짜 포맷팅
+    const formatCompletedDate = useCallback((dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
+    }, []);
+
+    // ===== 로딩 화면 =====
+    if (loading) {
+        return (
             <div style={{
                 display: 'flex',
                 justifyContent: 'center',
@@ -163,59 +285,7 @@ const Home = () => {
         );
     }
 
-    const collectedCount = stamps.filter(s => s.collected).length;
-    const progressPercentage = (collectedCount / stamps.length) * 100;
-
-    const scrollToStamps = () => {
-        stampSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    const handleStampClick = (id) => {
-        if (!isLoggedIn) {
-            alert('로그인이 필요합니다!');
-            navigate('/login');
-            return;
-        }
-        navigate('/qr-scan');
-    };
-
-    const handleLogout = () => {
-        logout();
-        setIsLoggedIn(false);
-        setUser(null);
-        setShowProfileMenu(false);
-        setIsCompleted(false);
-        setCompletedAt(null);
-        setStamps(stamps.map(stamp => ({ ...stamp, collected: false })));
-        alert('로그아웃되었습니다.');
-    };
-
-    const handleAdminPage = () => {
-        setShowProfileMenu(false);
-        navigate('/admin/dashboard');
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (collectedCount < 15) {
-            alert(`15개의 스탬프를 모두 모아야 제출할 수 있습니다! (현재 ${collectedCount}/15)`);
-            return;
-        }
-        // 버튼 클릭 시 완주 상태로 변경
-        setIsCompleted(true);
-        setCompletedAt(new Date().toISOString());
-        alert(`${user?.name}님! 완주를 축하합니다! 🎉`);
-    };
-
-    // 완주 날짜 포맷팅
-    const formatCompletedDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
-        return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
-    };
-
-    const isAdmin = user?.role === 'admin' || user?.is_admin === true;
-
+    // ===== 렌더링 =====
     return (
         <>
             {/* Desktop Navigation */}
@@ -311,10 +381,10 @@ const Home = () => {
                 </div>
                 <div 
                     className={`bottom-nav-item ${currentPage === 'scan' ? 'active' : ''}`}
-                    onClick={() =>{
-                        if(isLoggedIn){
+                    onClick={() => {
+                        if (isLoggedIn) {
                             navigate('/qr-scan');
-                        }else{
+                        } else {
                             alert('로그인이 필요합니다!');
                             navigate('/login');
                         }
@@ -430,7 +500,7 @@ const Home = () => {
                             </div>
                         </div>
 
-                        {/*  완주 축하 배너 */}
+                        {/* 완주 축하 배너 */}
                         {isLoggedIn && isCompleted && (
                             <div className="completion-banner">
                                 <div className="completion-banner-content">
@@ -481,6 +551,8 @@ const Home = () => {
                                                         src={stampImage}
                                                         alt={stamp.location}
                                                         className="stamp-image-collected"
+                                                        loading="lazy"
+                                                        decoding="async"
                                                     />
                                                 </div>
                                                 <div className="stamp-info-collected">
@@ -510,7 +582,6 @@ const Home = () => {
                         {isLoggedIn && (
                             <div className="submit-form-section">
                                 {isCompleted ? (
-                                    // 완주 시: 비활성화된 완주 완료 버튼
                                     <button 
                                         className="submit-button completed"
                                         disabled
@@ -518,7 +589,6 @@ const Home = () => {
                                         ✅ 완주 완료!
                                     </button>
                                 ) : (
-                                    // 미완주 시: 기존 버튼
                                     <form className="submit-form" onSubmit={handleSubmit}>
                                         <button 
                                             type="submit"
@@ -579,31 +649,22 @@ const Home = () => {
                                     </div>
                                     <button 
                                         className="close-panel-btn"
-                                        onClick={() => setSelectedBooth(null)}
+                                        onClick={handleCloseBoothPanel}
                                     >
                                         ✕
                                     </button>
                                 </div>
                             )}
 
-                            <KakaoMap 
-                                markers={stamps.map(s => ({
-                                    id: s.id,
-                                    name: s.location,
-                                    lat: s.lat,
-                                    lng: s.lng,
-                                    icon: s.icon,
-                                    congestion: congestionData[s.id] || 0
-                                }))}
-                                onMarkerClick={(marker) => {
-                                    const booth = stamps.find(s => s.id === marker.id);
-                                    if (booth) {
-                                        setSelectedBooth(booth);
-                                    }
-                                }}
-                                showCongestion={true}
-                                height="450px"
-                            />
+                            {/* ⭐ KakaoMap을 Suspense로 감싸서 지연 로딩 */}
+                            <Suspense fallback={<MapLoadingFallback />}>
+                                <KakaoMap 
+                                    markers={markers}
+                                    onMarkerClick={handleMarkerClick}
+                                    showCongestion={true}
+                                    height="450px"
+                                />
+                            </Suspense>
                         </div>
                     </div>
                 </section>
