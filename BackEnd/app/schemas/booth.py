@@ -24,7 +24,7 @@ class BoothUpdate(BoothBase):
 class BoothResponse(BoothBase):
     # 응답 시에는 DB에서 받은 ID를 포함하고 필드를 정렬합니다.
     booth_id: int
-    event_id: int
+    event_id: Optional[int] = None
     
     class Config:
         from_attributes = True

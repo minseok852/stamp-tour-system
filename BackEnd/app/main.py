@@ -9,6 +9,9 @@ app = FastAPI(
 )
 
 origins = [
+    "https://stamp-tour-system.vercel.app",  # Vercel 주소
+    "https://djustamp.com",
+    "https://www.djustamp.com",
     # React 개발 서버 주소
     "http://localhost:5173",
     "http://127.0.0.1:5173",
