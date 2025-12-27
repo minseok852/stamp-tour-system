@@ -48,11 +48,11 @@ async def get_all_congestion(db: Session = Depends(get_db)) -> Dict[int, int]:
     
     # 부스별 최근 스탬프 수 집계
     results = db.query(
-        # ✅ 수정: Stamp.id -> Stamp.stamp_id
+        # Stamp.id -> Stamp.stamp_id
         Stamp.booth_id,
         func.count(Stamp.stamp_id).label('count')
     ).filter(
-        # ✅ 수정: Stamp.collected_at -> Stamp.acquired_at
+        #  Stamp.collected_at -> Stamp.acquired_at
         Stamp.acquired_at >= time_threshold
     ).group_by(
         Stamp.booth_id
@@ -62,9 +62,9 @@ async def get_all_congestion(db: Session = Depends(get_db)) -> Dict[int, int]:
     congestion_data = {}
     
     # 모든 부스 ID 가져오기 (0으로 초기화)
-    # ✅ 수정: Booth.id -> Booth.booth_id
+    # Booth.id -> Booth.booth_id
     all_booths = db.query(Booth.booth_id).all()
-    # ✅ 수정: booth.id -> booth[0] (튜플 접근)
+    #  booth.id -> booth[0] (튜플 접근)
     for booth in all_booths:
         congestion_data[booth[0]] = 0 
     
