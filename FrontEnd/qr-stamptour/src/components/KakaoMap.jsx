@@ -1,7 +1,7 @@
 // src/components/KakaoMap.jsx
 // 카카오맵 공통 컴포넌트 - 지도 초기화, 마커, 혼잡도 표시
 import React, { useEffect, useRef, useState } from 'react';
-import '../styles/KakaoMap.css';
+import '../styles/Kakaomap.css';
 
 const KakaoMap = ({
     markers = [],           // 마커 목록 [{ id, name, lat, lng, icon, congestion }]
