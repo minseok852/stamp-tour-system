@@ -311,12 +311,22 @@ const QRScan = () => {
                         position.coords.longitude
                     );
                 },
-                (err) => {
+                async (err) => {
                     console.error('GPS 오류:', err);
-                    setError('GPS 위치를 가져올 수 없습니다. PIN을 입력해주세요.');
-                    setShowPinFallback(true);
-                    setScanning(false);
-                    isProcessingRef.current = false;
+                    
+                    // ⭐ 마지막 캐시된 위치가 있으면 API 호출하여 거리 에러 메시지 받기
+                    const lastKnown = currentLocationRef.current;
+                    if (lastKnown.lat && lastKnown.lng) {
+                        console.log('캐시된 위치로 API 호출 (거리 확인용):', lastKnown);
+                        await collectStamp(qrCode, boothId, lastKnown.lat, lastKnown.lng);
+                        // collectStamp 내부에서 거리 에러 시 PIN 모달 자동 표시됨
+                    } else {
+                        // 위치 정보가 전혀 없을 때
+                        setError('GPS 위치를 가져올 수 없습니다. PIN을 입력해주세요.');
+                        setShowPinFallback(true);
+                        setScanning(false);
+                        isProcessingRef.current = false;
+                    }
                 },
                 {
                     enableHighAccuracy: true,
