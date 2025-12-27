@@ -29,7 +29,7 @@ const QRManage = () => {
     event_id: 1
   });
 
-  // ⭐ 프론트엔드 도메인 (자동으로 현재 도메인 사용)
+  //  프론트엔드 도메인 (자동으로 현재 도메인 사용)
   const FRONTEND_URL = window.location.origin;
 
   // 인증 체크
@@ -102,12 +102,12 @@ const QRManage = () => {
     }
   };
 
-  // ⭐ QR 코드 생성 (URL 포함)
+  //  QR 코드 생성 (URL 포함)
   const generateQRCode = async (boothData) => {
     try {
       const canvas = canvasRef.current;
       
-      // ⭐ 스탬프 수집 URL 생성
+      //  스탬프 수집 URL 생성
       const stampUrl = `${FRONTEND_URL}/stamp/collect?booth_id=${boothData.booth_id}&qr_code=${encodeURIComponent(boothData.qr_code || `BOOTH_${String(boothData.booth_id).padStart(2, '0')}`)}`;
       
       console.log('생성된 QR URL:', stampUrl); // 디버그용

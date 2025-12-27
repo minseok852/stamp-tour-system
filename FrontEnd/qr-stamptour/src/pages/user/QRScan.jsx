@@ -20,7 +20,7 @@ const QRScan = () => {
     const [gpsEnabled, setGpsEnabled] = useState(true);
     const [settingsLoaded, setSettingsLoaded] = useState(false);
     
-    // ⭐ Ref로 최신 값 유지 + 중복 방지
+    // Ref로 최신 값 유지 + 중복 방지
     const gpsEnabledRef = useRef(true);
     const isProcessingRef = useRef(false);  // 처리 중 플래그
     const scannerRef = useRef(null);  // 스캐너 참조
@@ -91,7 +91,7 @@ const QRScan = () => {
     };
 
     const onScanSuccess = async (decodedText) => {
-        // ⭐ 이미 처리 중이면 무시 (중복 스캔 방지)
+        //  이미 처리 중이면 무시 (중복 스캔 방지)
         if (isProcessingRef.current) {
             console.log('이미 처리 중 - 스킵');
             return;

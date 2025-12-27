@@ -37,7 +37,7 @@ const Home = () => {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const profileMenuRef = useRef(null);
 
-    // ⭐ 완주 상태 추가
+    // 완주 상태 추가
     const [isCompleted, setIsCompleted] = useState(false);
     const [completedAt, setCompletedAt] = useState(null);
 
@@ -201,13 +201,13 @@ const Home = () => {
             alert(`15개의 스탬프를 모두 모아야 제출할 수 있습니다! (현재 ${collectedCount}/15)`);
             return;
         }
-        // ⭐ 버튼 클릭 시 완주 상태로 변경
+        // 버튼 클릭 시 완주 상태로 변경
         setIsCompleted(true);
         setCompletedAt(new Date().toISOString());
         alert(`${user?.name}님! 완주를 축하합니다! 🎉`);
     };
 
-    // ⭐ 완주 날짜 포맷팅
+    // 완주 날짜 포맷팅
     const formatCompletedDate = (dateString) => {
         if (!dateString) return '';
         const date = new Date(dateString);
@@ -430,7 +430,7 @@ const Home = () => {
                             </div>
                         </div>
 
-                        {/* ⭐ 완주 축하 배너 */}
+                        {/*  완주 축하 배너 */}
                         {isLoggedIn && isCompleted && (
                             <div className="completion-banner">
                                 <div className="completion-banner-content">
@@ -463,7 +463,7 @@ const Home = () => {
                             </div>
                         </div>
 
-                        {/* Stamp Grid */}
+                        {/* 스탬프 그리드 */}
                         <div className={`stamp-grid ${isCompleted ? 'completed' : ''}`}>
                             {stamps.map(stamp => {
                                 const stampImage = getStampImage(stamp.id);
@@ -510,7 +510,7 @@ const Home = () => {
                         {isLoggedIn && (
                             <div className="submit-form-section">
                                 {isCompleted ? (
-                                    // ⭐ 완주 시: 비활성화된 완주 완료 버튼
+                                    // 완주 시: 비활성화된 완주 완료 버튼
                                     <button 
                                         className="submit-button completed"
                                         disabled
