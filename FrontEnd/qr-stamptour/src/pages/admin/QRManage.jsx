@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { getBooths, createBooth, deleteBooth } from '../../services/adminApi';
+import { getBooths, createBooth, deleteBooth, updateBooth } from '../../services/adminApi';
 import { logout, getCurrentUser } from '../../services/authApi';
 import '../../styles/QRManage.css'; 
 
@@ -12,12 +12,14 @@ const QRManage = () => {
   const [booths, setBooths] = useState([]);
   const [selectedBooth, setSelectedBooth] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [qrCodeUrl, setQrCodeUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const canvasRef = useRef(null);
 
+  // 새 부스 폼
   const [newBooth, setNewBooth] = useState({
     booth_name: '',
     location_name: '',
@@ -27,6 +29,18 @@ const QRManage = () => {
     qr_pin: '',
     icon: '🏛️',
     event_id: 1
+  });
+
+  // ⭐ 수정용 부스 폼
+  const [editBooth, setEditBooth] = useState({
+    booth_id: null,
+    booth_name: '',
+    location_name: '',
+    latitude: '',
+    longitude: '',
+    qr_code: '',
+    qr_pin: '',
+    icon: '🏛️'
   });
 
   //  프론트엔드 도메인 (자동으로 현재 도메인 사용)
@@ -110,7 +124,7 @@ const QRManage = () => {
       //  스탬프 수집 URL 생성
       const stampUrl = `${FRONTEND_URL}/stamp/collect?booth_id=${boothData.booth_id}&qr_code=${encodeURIComponent(boothData.qr_code || `BOOTH_${String(boothData.booth_id).padStart(2, '0')}`)}`;
       
-      console.log('생성된 QR URL:', stampUrl); // 디버그용
+      console.log('생성된 QR URL:', stampUrl);
       
       await QRCode.toCanvas(canvas, stampUrl, {
         width: 300,
@@ -126,7 +140,7 @@ const QRManage = () => {
       setQrCodeUrl(url);
       setSelectedBooth({
         ...boothData,
-        generatedUrl: stampUrl // URL도 저장
+        generatedUrl: stampUrl
       });
     } catch (error) {
       console.error('QR 코드 생성 실패:', error);
@@ -162,7 +176,6 @@ const QRManage = () => {
     setError(null);
     
     try {
-      // 위도/경도를 숫자로 변환
       const boothData = {
         ...newBooth,
         latitude: parseFloat(newBooth.latitude),
@@ -173,7 +186,6 @@ const QRManage = () => {
       
       alert(`${newBooth.booth_name} 부스가 생성되었습니다!`);
       
-      // 폼 초기화 및 닫기
       setNewBooth({
         booth_name: '',
         location_name: '',
@@ -185,14 +197,77 @@ const QRManage = () => {
         event_id: 1
       });
       setShowCreateModal(false);
-      
-      // 목록 새로고침
       fetchBooths();
     } catch (error) {
       if (!handleAuthError(error)) {
         console.error('부스 생성 실패:', error);
         setError(error.detail || '부스 생성 중 오류가 발생했습니다.');
         alert(error.detail || '부스 생성 중 오류가 발생했습니다.');
+      }
+    }
+  };
+
+  // ⭐ 수정 모달 열기
+  const openEditModal = (booth) => {
+    setEditBooth({
+      booth_id: booth.booth_id,
+      booth_name: booth.booth_name || '',
+      location_name: booth.location_name || '',
+      latitude: booth.latitude || '',
+      longitude: booth.longitude || '',
+      qr_code: booth.qr_code || '',
+      qr_pin: booth.qr_pin || '',
+      icon: booth.icon || '🏛️'
+    });
+    setShowEditModal(true);
+  };
+
+  // ⭐ 부스 수정 처리
+  const handleUpdateBooth = async (e) => {
+    e.preventDefault();
+    setError(null);
+    
+    try {
+      const boothData = {
+        booth_name: editBooth.booth_name,
+        location_name: editBooth.location_name,
+        latitude: parseFloat(editBooth.latitude),
+        longitude: parseFloat(editBooth.longitude),
+        qr_code: editBooth.qr_code,
+        qr_pin: editBooth.qr_pin,
+        icon: editBooth.icon
+      };
+
+      await updateBooth(editBooth.booth_id, boothData);
+      
+      alert(`${editBooth.booth_name} 부스가 수정되었습니다!`);
+      
+      setShowEditModal(false);
+      setEditBooth({
+        booth_id: null,
+        booth_name: '',
+        location_name: '',
+        latitude: '',
+        longitude: '',
+        qr_code: '',
+        qr_pin: '',
+        icon: '🏛️'
+      });
+      fetchBooths();
+    } catch (error) {
+      if (!handleAuthError(error)) {
+        console.error('부스 수정 실패:', error);
+        // ⭐ 에러 메시지 안전하게 추출
+        let errorMessage = '부스 수정 중 오류가 발생했습니다.';
+        if (error.detail) {
+          if (Array.isArray(error.detail)) {
+            errorMessage = error.detail.map(e => e.msg || JSON.stringify(e)).join(', ');
+          } else if (typeof error.detail === 'string') {
+            errorMessage = error.detail;
+          }
+        }
+        setError(errorMessage);
+        alert(errorMessage);
       }
     }
   };
@@ -343,7 +418,8 @@ const QRManage = () => {
                 </div>
               </div>
 
-              <div className="qr-actions">
+              {/* ⭐ 버튼 4개로 변경: 생성, 다운로드, 수정, 삭제 */}
+              <div className="qr-actions four-buttons">
                 <button 
                   className="action-button generate"
                   onClick={() => generateQRCode(booth)}
@@ -358,6 +434,12 @@ const QRManage = () => {
                   }}
                 >
                   📥 다운로드
+                </button>
+                <button 
+                  className="action-button edit"
+                  onClick={() => openEditModal(booth)}
+                >
+                  ✏️ 수정
                 </button>
                 <button 
                   className="action-button delete"
@@ -512,6 +594,114 @@ const QRManage = () => {
 
                 <button type="submit" className="submit-button">
                   부스 생성하기
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ⭐ Edit Booth Modal (수정 모달) */}
+        {showEditModal && (
+          <div className="create-booth-modal" onClick={() => setShowEditModal(false)}>
+            <div className="create-booth-content" onClick={(e) => e.stopPropagation()}>
+              <button className="close-modal" onClick={() => setShowEditModal(false)}>×</button>
+              
+              <h2 className="modal-title">✏️ 부스 수정</h2>
+              
+              <form className="create-booth-form" onSubmit={handleUpdateBooth}>
+                <div className="form-group">
+                  <label className="form-label">부스 이름 *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="예: 교육관"
+                    value={editBooth.booth_name}
+                    onChange={(e) => setEditBooth({...editBooth, booth_name: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">건물명</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="예: 국제교육관(5층)"
+                    value={editBooth.location_name}
+                    onChange={(e) => setEditBooth({...editBooth, location_name: e.target.value})}
+                  />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">위도 (Latitude) *</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      className="form-input"
+                      placeholder="37.631300"
+                      value={editBooth.latitude}
+                      onChange={(e) => setEditBooth({...editBooth, latitude: e.target.value})}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">경도 (Longitude) *</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      className="form-input"
+                      placeholder="127.253300"
+                      value={editBooth.longitude}
+                      onChange={(e) => setEditBooth({...editBooth, longitude: e.target.value})}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">QR 코드 값 *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="예: BOOTH_01"
+                    value={editBooth.qr_code}
+                    onChange={(e) => setEditBooth({...editBooth, qr_code: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">관리자 PIN *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="QR 오류 시 사용할 PIN (4자리 이상)"
+                    value={editBooth.qr_pin}
+                    onChange={(e) => setEditBooth({...editBooth, qr_pin: e.target.value})}
+                    required
+                    minLength={4}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">아이콘</label>
+                  <div className="icon-selector">
+                    {iconOptions.map(icon => (
+                      <div
+                        key={icon}
+                        className={`icon-option ${editBooth.icon === icon ? 'selected' : ''}`}
+                        onClick={() => setEditBooth({...editBooth, icon})}
+                      >
+                        {icon}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button type="submit" className="submit-button edit-submit">
+                  수정 완료
                 </button>
               </form>
             </div>
