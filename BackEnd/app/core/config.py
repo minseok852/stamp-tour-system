@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120 #2시간으로 수정 --> 30분 너무 짧음
 
     class Config:
         # .env 파일 위치 지정

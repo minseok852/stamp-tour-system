@@ -114,11 +114,15 @@ const Dashboard = () => {
         }
     };
 
-    // 혼잡도 30초마다 갱신
+    // ⭐ 혼잡도 180초(3분)마다 갱신 - 백엔드와 동기화
     useEffect(() => {
         if (booths.length === 0) return;
         
-        const interval = setInterval(async () => {
+        // ⭐ 페이지 visibility 체크 추가
+        const fetchCongestion = async () => {
+            // 페이지가 보이지 않으면 스킵
+            if (document.hidden) return;
+            
             try {
                 const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api/v1'}/congestion`);
                 if (response.ok) {
@@ -128,7 +132,10 @@ const Dashboard = () => {
             } catch (e) {
                 // 무시
             }
-        }, 30000);
+        };
+        
+        // ⭐ 30초 → 180초 (3분)으로 변경
+        const interval = setInterval(fetchCongestion, 180000);
 
         return () => clearInterval(interval);
     }, [booths.length]);
@@ -239,7 +246,7 @@ const Dashboard = () => {
                             <div className="stat-label">완주자</div>
                             <div className="stat-value">{stats.completedUsers}명</div>
                             <div className="stat-sub">
-                                ({Math.round((stats.completedUsers / stats.totalUsers) * 100)}%)
+                                ({stats.totalUsers > 0 ? Math.round((stats.completedUsers / stats.totalUsers) * 100) : 0}%)
                             </div>
                         </div>
                     </div>
@@ -249,7 +256,7 @@ const Dashboard = () => {
                             <div className="stat-label">총 스탬프</div>
                             <div className="stat-value">{stats.totalStamps}개</div>
                             <div className="stat-sub">
-                                (평균 {(stats.totalStamps / stats.totalUsers).toFixed(1)}개/인)
+                                (평균 {stats.totalUsers > 0 ? (stats.totalStamps / stats.totalUsers).toFixed(1) : 0}개/인)
                             </div>
                         </div>
                     </div>
