@@ -1,10 +1,10 @@
 # app/api/v1/endpoints/stamps.py
-# 스탬프 찍기(QR 스캔), 내 스탬프 조회 (Settings 연동 버전)
+# 스탬프 찍기(QR 스캔), 내 스탬프 조회 (부정행위 방지 추가 버전)
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from math import radians, sin, cos, sqrt, atan2
 
 from app.db.session import get_db
@@ -12,12 +12,27 @@ from app.api.v1.dependencies import get_current_user
 from app.models.stamp import Stamp
 from app.models.booth import Booth
 from app.models.user import User
-from app.models.event import Event  # ⭐ Event 모델 추가
+from app.models.event import Event
 from app.schemas.stamp import StampScanRequest, StampResponse
 
 router = APIRouter()
 
 
+# ========================================
+# 부정행위 방지 설정
+# ========================================
+ANTI_CHEAT_CONFIG = {
+    "same_location_distance": 30,      # 30m 이내 = 같은 장소
+    "same_location_interval": 10,      # 같은 장소 최소 간격 (초)
+    "different_location_interval": 60, # 다른 장소 최소 간격 (초)
+    "max_walking_speed": 3.0,          # 최대 걷는 속도 (m/s) ≈ 10.8km/h
+    "enabled": True                    # 부정행위 검증 활성화
+}
+
+
+# ========================================
+# 유틸리티 함수들
+# ========================================
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
     두 GPS 좌표 간의 거리를 미터 단위로 계산 (Haversine Formula)
@@ -44,21 +59,114 @@ def get_event_settings(db: Session):
     Event 테이블에서 GPS 설정 가져오기
     """
     event = db.query(Event).first()
+    
     if event:
         return {
             "gps_enabled": event.gps_enabled if hasattr(event, 'gps_enabled') else True,
             "gps_max_distance": event.gps_max_distance if hasattr(event, 'gps_max_distance') else 50.0,
-            "required_stamps": event.stamp_count if hasattr(event, 'stamp_count') else 15
+            "required_stamps": event.required_stamps if hasattr(event, 'required_stamps') else 15
         }
+    
     # 기본값 (Event 테이블에 데이터 없을 경우)
     return {
         "gps_enabled": True,
-        "gps_max_distance": 50.0,  # 기본 50m
+        "gps_max_distance": 50.0,
         "required_stamps": 15
     }
 
 
-# 1. QR 스캔 및 스탬프 적립 (Settings 연동)
+def check_anti_cheat(student_id: str, current_booth: Booth, db: Session) -> dict:
+    """
+    부정행위 검증
+    
+    - 같은 장소 (30m 이내): 10초 이상 지나야 함
+    - 다른 장소 (30m 이상): 이동 속도가 3m/s 이하여야 함
+    
+    Returns:
+        {"passed": True/False, "reason": "사유"}
+    """
+    # 부정행위 검증 비활성화 시 통과
+    if not ANTI_CHEAT_CONFIG["enabled"]:
+        return {"passed": True, "reason": None}
+    
+    # 1. 마지막 스탬프 조회
+    last_stamp = db.query(Stamp).filter(
+        Stamp.student_id == student_id
+    ).order_by(Stamp.acquired_at.desc()).first()
+    
+    # 첫 스탬프면 통과
+    if not last_stamp:
+        return {"passed": True, "reason": "첫 스탬프"}
+    
+    # 2. 이전 부스 정보 조회
+    last_booth = db.query(Booth).filter(
+        Booth.booth_id == last_stamp.booth_id
+    ).first()
+    
+    if not last_booth:
+        return {"passed": True, "reason": "이전 부스 정보 없음"}
+    
+    # 3. 시간 차이 계산
+    now = datetime.now(timezone.utc)
+    last_time = last_stamp.acquired_at
+    
+    # timezone 처리 (DB에서 가져온 시간이 timezone 없을 수 있음)
+    if last_time.tzinfo is None:
+        last_time = last_time.replace(tzinfo=timezone.utc)
+    
+    time_diff = (now - last_time).total_seconds()
+    
+    # 4. 부스 간 거리 계산
+    booth_distance = calculate_distance(
+        float(last_booth.latitude), float(last_booth.longitude),
+        float(current_booth.latitude), float(current_booth.longitude)
+    )
+    
+    # 5. 같은 장소인지 판단 (30m 이내)
+    same_location_distance = ANTI_CHEAT_CONFIG["same_location_distance"]
+    is_same_location = booth_distance < same_location_distance
+    
+    # 6. 검증 로직
+    if is_same_location:
+        # ===== 같은 장소: 10초 이상 지나야 함 =====
+        min_interval = ANTI_CHEAT_CONFIG["same_location_interval"]
+        
+        if time_diff < min_interval:
+            wait_time = int(min_interval - time_diff)
+            return {
+                "passed": False,
+                "reason": f"너무 빠른 스캔입니다. {wait_time}초 후에 다시 시도해주세요."
+            }
+        else:
+            return {"passed": True, "reason": "같은 장소, 시간 충분"}
+    
+    else:
+        # ===== 다른 장소: 이동 속도 체크 =====
+        # 시간이 0이면 비정상
+        if time_diff <= 0:
+            return {
+                "passed": False,
+                "reason": "이동 시간이 비정상적입니다."
+            }
+        
+        # 이동 속도 계산 (m/s)
+        speed = booth_distance / time_diff
+        max_speed = ANTI_CHEAT_CONFIG["max_walking_speed"]
+        
+        if speed > max_speed:
+            return {
+                "passed": False,
+                "reason": f"이동 속도가 비정상적입니다. ({booth_distance:.0f}m를 {time_diff:.0f}초에 이동)"
+            }
+        else:
+            return {"passed": True, "reason": "다른 장소, 속도 정상"}
+
+
+# ========================================
+# API 엔드포인트
+# ========================================
+
+# 1. QR 스캔 및 스탬프 적립
 @router.post("/scan", response_model=StampResponse)
 def scan_qr_and_collect_stamp(
     scan_data: StampScanRequest,
@@ -68,21 +176,19 @@ def scan_qr_and_collect_stamp(
     """
     QR 코드 스캔 및 스탬프 적립
     
-    검증:
-    1. JWT 토큰 인증 (자동)
-    2. QR 코드 유효성
-    3. QR PIN 검증
-    4. GPS 거리 검증 (Settings에서 설정한 거리)
+    검증 순서:
+    1. QR 코드 유효성
+    2. QR PIN 검증
+    3. GPS 거리 검증
+    4. 부정행위 검증 (시간/속도)
     5. 중복 수집 방지
     """
-    
-    # ⭐ Settings에서 GPS 설정 가져오기
+    # Settings에서 GPS 설정 가져오기
     settings = get_event_settings(db)
     gps_enabled = settings["gps_enabled"]
     max_distance = settings["gps_max_distance"]
     required_stamps = settings["required_stamps"]
     
-    # JWT에서 student_id 자동 추출
     student_id = current_user.student_id
     
     # 1. QR 코드로 부스 찾기
@@ -101,7 +207,7 @@ def scan_qr_and_collect_stamp(
             detail="QR 핀번호가 일치하지 않습니다."
         )
     
-    # 3. GPS 위치 검증 (⭐ Settings 값 사용!)
+    # 3. GPS 위치 검증
     if gps_enabled:
         distance = calculate_distance(
             scan_data.user_latitude,
@@ -116,7 +222,16 @@ def scan_qr_and_collect_stamp(
                 detail=f"부스로부터 {distance:.1f}m 떨어져 있습니다. {max_distance:.0f}m 이내에서 스캔해주세요."
             )
     
-    # 4. 중복 체크
+    # 4. 부정행위 검증 ⭐
+    anti_cheat_result = check_anti_cheat(student_id, booth, db)
+    
+    if not anti_cheat_result["passed"]:
+        raise HTTPException(
+            status_code=400,
+            detail=anti_cheat_result["reason"]
+        )
+    
+    # 5. 중복 체크
     existing_stamp = db.query(Stamp).filter(
         Stamp.student_id == student_id,
         Stamp.booth_id == booth.booth_id
@@ -128,7 +243,7 @@ def scan_qr_and_collect_stamp(
             detail=f"이미 [{booth.booth_name}] 부스의 스탬프를 획득했습니다."
         )
     
-    # 5. 스탬프 저장
+    # 6. 스탬프 저장
     new_stamp = Stamp(
         student_id=student_id,
         booth_id=booth.booth_id,
@@ -139,7 +254,7 @@ def scan_qr_and_collect_stamp(
     db.commit()
     db.refresh(new_stamp)
     
-    # 6. 현재까지 모은 스탬프 개수 확인
+    # 7. 현재까지 모은 스탬프 개수 확인
     total_stamps = db.query(Stamp).filter(Stamp.student_id == student_id).count()
     
     return {
@@ -165,8 +280,6 @@ def collect_stamp_by_pin(
     """
     PIN 번호로 스탬프 적립 (GPS 오류 시 사용)
     """
-    
-    # ⭐ Settings에서 필요 스탬프 수 가져오기
     settings = get_event_settings(db)
     required_stamps = settings["required_stamps"]
     
@@ -182,7 +295,16 @@ def collect_stamp_by_pin(
     if booth.qr_pin != pin:
         raise HTTPException(status_code=400, detail="PIN 번호가 올바르지 않습니다.")
     
-    # 3. 중복 체크
+    # 3. 부정행위 검증 ⭐
+    anti_cheat_result = check_anti_cheat(student_id, booth, db)
+    
+    if not anti_cheat_result["passed"]:
+        raise HTTPException(
+            status_code=400,
+            detail=anti_cheat_result["reason"]
+        )
+    
+    # 4. 중복 체크
     existing_stamp = db.query(Stamp).filter(
         Stamp.student_id == student_id,
         Stamp.booth_id == booth.booth_id
@@ -194,7 +316,7 @@ def collect_stamp_by_pin(
             detail=f"이미 [{booth.booth_name}] 부스의 스탬프를 획득했습니다."
         )
     
-    # 4. 스탬프 저장
+    # 5. 스탬프 저장
     new_stamp = Stamp(
         student_id=student_id,
         booth_id=booth.booth_id,
@@ -229,7 +351,6 @@ def get_my_stamps(
     내가 획득한 스탬프 목록 조회
     """
     student_id = current_user.student_id
-    
     stamps = db.query(Stamp).filter(Stamp.student_id == student_id).all()
     
     result = []
@@ -257,12 +378,10 @@ def check_completion_status(
     """
     완주 여부 확인
     """
-    # ⭐ Settings에서 필요 스탬프 수 가져오기
     settings = get_event_settings(db)
     required_stamps = settings["required_stamps"]
     
     student_id = current_user.student_id
-    
     total_stamps = db.query(Stamp).filter(Stamp.student_id == student_id).count()
     
     is_completed = total_stamps >= required_stamps
@@ -310,34 +429,24 @@ def get_booths_with_status(
         "booths": result
     }
 
-# ============================================
-# 아래 코드를 stamps.py 또는 별도 파일에 추가
-# 일반 사용자도 접근 가능한 공개 설정 API
-# ============================================
 
 # 6. 공개 이벤트 설정 조회 (GPS 설정 등)
 @router.get("/event-settings")
 def get_public_event_settings(db: Session = Depends(get_db)):
     """
     공개 이벤트 설정 조회 (로그인 불필요)
-    - GPS 검증 사용 여부
-    - 필요 스탬프 수
-    - 이벤트 활성화 여부
     """
-    from app.models.event import Event
-    
     event = db.query(Event).first()
     
     if event:
         return {
             "gps_enabled": event.gps_enabled if hasattr(event, 'gps_enabled') else True,
             "gps_max_distance": event.gps_max_distance if hasattr(event, 'gps_max_distance') else 50.0,
-            "required_stamps": event.stamp_count if hasattr(event, 'stamp_count') else 15,
+            "required_stamps": event.required_stamps if hasattr(event, 'required_stamps') else 15,
             "is_active": event.is_active if hasattr(event, 'is_active') else True,
             "event_name": event.event_name if hasattr(event, 'event_name') else "스탬프 투어"
         }
     
-    # 기본값 반환
     return {
         "gps_enabled": True,
         "gps_max_distance": 50.0,
