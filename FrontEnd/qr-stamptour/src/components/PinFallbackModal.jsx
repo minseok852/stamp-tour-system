@@ -10,7 +10,7 @@ const PinFallbackModal = ({ boothId, qrCode, onClose, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     
-    // ⭐ 부스 선택 관련 상태
+    // 부스 선택 관련 상태
     const [booths, setBooths] = useState([]);
     const [selectedBoothId, setSelectedBoothId] = useState(boothId || '');
     const [boothsLoading, setBoothsLoading] = useState(false);
@@ -101,7 +101,7 @@ const PinFallbackModal = ({ boothId, qrCode, onClose, onSuccess }) => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="pin-form">
-                    {/* ⭐ 부스 선택 (boothId가 없을 때만 표시) */}
+                    {/* 부스 선택 (boothId가 없을 때만 표시) */}
                     {!boothId && (
                         <div className="booth-select-container">
                             <label htmlFor="booth-select">부스 선택</label>

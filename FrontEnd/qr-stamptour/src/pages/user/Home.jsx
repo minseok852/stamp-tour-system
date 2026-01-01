@@ -235,6 +235,11 @@ const Home = () => {
         setShowProfileMenu(false);
         navigate('/admin/dashboard');
     }, [navigate]);
+    // 마이페이지 이동 헨들러
+    const handleMyPage = useCallback(() => {
+        setShowProfileMenu(false);
+        navigate('/mypage');
+    }, [navigate]);
 
     const handleSubmit = useCallback((e) => {
         e.preventDefault();
@@ -345,6 +350,13 @@ const Home = () => {
                                             </div>
                                         )}
                                         <div 
+                                            className="dropdown-item profile"
+                                            onClick={handleMyPage}
+                                        >
+                                            <span className="dropdown-icon">😊</span>
+                                            마이페이지
+                                        </div>
+                                        <div 
                                             className="dropdown-item logout"
                                             onClick={handleLogout}
                                         >
@@ -445,6 +457,13 @@ const Home = () => {
                                     <span className="mobile-menu-arrow">›</span>
                                 </div>
                             )}
+                            <div 
+                                className="dropdown-item profile"
+                                onClick={handleMyPage}
+                            >
+                                <span className="dropdown-icon">😊</span>
+                                마이페이지
+                            </div>
                             <div 
                                 className="mobile-menu-item logout"
                                 onClick={handleLogout}
