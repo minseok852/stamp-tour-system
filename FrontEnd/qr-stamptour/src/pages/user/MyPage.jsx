@@ -1,12 +1,13 @@
 // MyPage.jsx - 마이페이지 컴포넌트
 // 데스크톱 + 모바일 반응형 최적화 버전
-// 비밀번호 변경: 새 비밀번호만 입력하는 간단한 방식
+// 백엔드 API 연동 완료
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { isAuthenticated, getStoredUser, logout } from '../../services/authApi';
+import { isAuthenticated, logout } from '../../services/authApi';
+import { getMyProfile, updatePhoneNumber, updatePassword } from '../../services/userApi';
+import '../../styles/MyPage.css';
 
-import '../../styles/MyPage.css'; 
 
 const MyPage = () => {
     const navigate = useNavigate();
@@ -40,18 +41,18 @@ const MyPage = () => {
             }
             
             try {
-                const storedUser = getStoredUser();
-                setUser(storedUser);
-                setPhoneNumber(storedUser?.phone || '');
-                
-                // TODO: 서버에서 최신 사용자 정보 가져오기
-                // const response = await getUserProfile();
-                // setUser(response);
-                // setPhoneNumber(response.phone || '');
-                
+                // 서버에서 사용자 정보 가져오기
+                const profileData = await getMyProfile();
+                setUser(profileData);
+                setPhoneNumber(profileData.phone_number || '');
             } catch (error) {
                 console.error('사용자 정보 로드 실패:', error);
                 setMessage({ type: 'error', text: '사용자 정보를 불러오는데 실패했습니다.' });
+                
+                // API 실패 시 로컬 스토리지에서 기본 정보 사용
+                const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+                setUser(storedUser);
+                setPhoneNumber(storedUser.phone_number || '');
             } finally {
                 setLoading(false);
             }
@@ -74,7 +75,7 @@ const MyPage = () => {
         setPhoneNumber(formatted);
     };
 
-    // 전화번호 저장
+    // 전화번호 저장 (API 연동)
     const handlePhoneSave = async () => {
         if (!phoneNumber || phoneNumber.length < 13) {
             setMessage({ type: 'error', text: '올바른 전화번호를 입력해주세요.' });
@@ -83,24 +84,28 @@ const MyPage = () => {
         
         setIsSubmitting(true);
         try {
-            // TODO: API 호출
-            // await updatePhoneNumber(phoneNumber);
+            // API 호출
+            const result = await updatePhoneNumber(phoneNumber);
             
-            // 임시: 로컬 스토리지 업데이트
-            const updatedUser = { ...user, phone: phoneNumber };
-            localStorage.setItem('user', JSON.stringify(updatedUser));
+            // 성공 시 로컬 상태 및 스토리지 업데이트
+            const updatedUser = { ...user, phone_number: phoneNumber };
             setUser(updatedUser);
             
-            setMessage({ type: 'success', text: '전화번호가 변경되었습니다.' });
+            // 로컬 스토리지도 업데이트 (다른 페이지와 동기화)
+            const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+            storedUser.phone_number = phoneNumber;
+            localStorage.setItem('user', JSON.stringify(storedUser));
+            
+            setMessage({ type: 'success', text: result.message || '전화번호가 변경되었습니다.' });
             setIsEditingPhone(false);
         } catch (error) {
-            setMessage({ type: 'error', text: '전화번호 변경에 실패했습니다.' });
+            setMessage({ type: 'error', text: error.message || '전화번호 변경에 실패했습니다.' });
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // 비밀번호 변경 핸들러 (간단한 방식 - 새 비밀번호만)
+    // 비밀번호 변경 핸들러 (API 연동)
     const handlePasswordChange = async (e) => {
         e.preventDefault();
         
@@ -124,14 +129,14 @@ const MyPage = () => {
         
         setIsSubmitting(true);
         try {
-            // TODO: API 호출
-            // await changePassword(newPassword);
+            // API 호출
+            const result = await updatePassword(newPassword, confirmPassword);
             
-            setMessage({ type: 'success', text: '비밀번호가 변경되었습니다.' });
+            setMessage({ type: 'success', text: result.message || '비밀번호가 변경되었습니다.' });
             setPasswordData({ newPassword: '', confirmPassword: '' });
             setIsChangingPassword(false);
         } catch (error) {
-            setMessage({ type: 'error', text: '비밀번호 변경에 실패했습니다.' });
+            setMessage({ type: 'error', text: error.message || '비밀번호 변경에 실패했습니다.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -193,7 +198,7 @@ const MyPage = () => {
                         <div className="profile-info">
                             <h2 className="profile-name">{user?.name || '이름 없음'}</h2>
                             <p className="profile-student-id">{user?.student_id || '학번 없음'}</p>
-                            <p className="profile-department">{user?.department || '컴퓨터공학과'}</p>
+                            <p className="profile-department">{user?.dept_name || '학과 없음'}</p>
                         </div>
                     </section>
 
@@ -259,7 +264,7 @@ const MyPage = () => {
                                         <span className="info-icon">📚</span>
                                         학과
                                     </div>
-                                    <div className="info-value">{user?.department || '컴퓨터공학과'}</div>
+                                    <div className="info-value">{user?.dept_name || '-'}</div>
                                 </div>
                                 
                                 <div className="info-item">
@@ -267,7 +272,7 @@ const MyPage = () => {
                                         <span className="info-icon">📅</span>
                                         학년
                                     </div>
-                                    <div className="info-value">{user?.grade ? `${user.grade}학년` : '4학년'}</div>
+                                    <div className="info-value">{user?.grade ? `${user.grade}학년` : '-'}</div>
                                 </div>
                             </div>
                         </div>
@@ -316,7 +321,7 @@ const MyPage = () => {
                                                 className="cancel-btn"
                                                 onClick={() => {
                                                     setIsEditingPhone(false);
-                                                    setPhoneNumber(user?.phone || '');
+                                                    setPhoneNumber(user?.phone_number || '');
                                                 }}
                                             >
                                                 취소
@@ -325,7 +330,7 @@ const MyPage = () => {
                                     </div>
                                 ) : (
                                     <div className="setting-value">
-                                        {user?.phone || '등록된 번호 없음'}
+                                        {user?.phone_number || '등록된 번호 없음'}
                                     </div>
                                 )}
                             </div>

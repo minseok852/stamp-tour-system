@@ -10,8 +10,8 @@ INSERT INTO events (event_name, stamp_count, start_time, end_time, is_active, gp
 VALUES (
     '2024 대진대학교 스탬프 투어',  -- 이벤트 이름
     15,                              -- 완주 필요 스탬프 수
-    '2024-12-01 09:00:00',          -- 시작 시간
-    '2024-12-31 18:00:00',          -- 종료 시간
+    '2025-12-12 09:00:00',          -- 시작 시간
+    '2025-12-31 18:00:00',          -- 종료 시간
     true,                            -- 활성화 여부
     true,                            -- GPS 검증 사용
     50.0,                            -- GPS 최대 거리 (50m)
@@ -19,6 +19,20 @@ VALUES (
 )
 ON CONFLICT DO NOTHING;
 
+--이걸로 변환 했음
+INSERT INTO events (event_name, required_stamps, start_date, end_date, start_time, end_time, is_active, gps_enabled, gps_max_distance, gps_bypass_allowed)
+VALUES (
+    '2024 대진대학교 스탐프 투어',
+    15,
+    '2025-12-12',
+    '2025-12-31',
+    '09:00:00',
+    '18:00:00',
+    true,
+    true,
+    50.0,
+    true
+)
 
 -- ============================================
 -- 2. Booths 테이블 초기 데이터 (15개 부스)

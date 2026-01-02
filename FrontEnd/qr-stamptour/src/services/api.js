@@ -27,4 +27,23 @@ api.interceptors.request.use(
     }
 );
 
+// 응답 인터셉터 - 401 에러 시 자동 처리
+//401에러 발생 시 자동 로그아웃 처리
+api.interceptors.response.use(
+    // 성공 응답은 그대로 반환
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            // 토큰 삭제
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('user');
+            
+            // 로그인 페이지로 이동
+            alert('세션이 만료되었습니다.');
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
 export default api;
