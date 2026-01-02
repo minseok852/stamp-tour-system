@@ -47,7 +47,7 @@ export const updateBooth = async (boothId, boothData) => {
 // ========================================
 // 대시보드 API
 // ========================================
-
+//대시보드 통계 조회
 export const getDashboardStats = async () => {
     try {
         const response = await api.get('/admin/dashboard/stats');
@@ -57,7 +57,7 @@ export const getDashboardStats = async () => {
         throw error.response?.data || '대시보드 통계 조회 실패';
     }
 };
-
+//QR/PIN 수집 비율 조회
 export const getCollectionStats = async () => {
     try {
         const response = await api.get('/admin/collection-stats');
@@ -67,7 +67,7 @@ export const getCollectionStats = async () => {
         throw error.response?.data || '수집 비율 조회 실패';
     }
 };
-
+//의심 기록 조회
 export const getSuspiciousRecords = async (limit = 20) => {
     try {
         const response = await api.get(`/admin/suspicious?limit=${limit}`);

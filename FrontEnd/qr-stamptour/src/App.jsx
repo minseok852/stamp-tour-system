@@ -14,6 +14,7 @@ import QRManage from './pages/admin/QRManage';
 import UserManage from './pages/admin/UserManage';
 import Settings from './pages/admin/Settings';
 import DataExport from './pages/admin/DataExport';
+import MyPage from './pages/user/MyPage';
 
 function App() {
   return (
@@ -25,7 +26,8 @@ function App() {
       <Route path="/forgotpasswordmodal" element={<ForgotPasswordModal isOpen={true} onClose={() => window.history.back()} />} />
       <Route path="/qr-scan" element={<QRScan />} />
       <Route path='/stamp/collect' element={<StampCollect/>}/>
-      
+      <Route path="/mypage" element={<MyPage />} />
+
       {/* 관리자 페이지 */}
       <Route path="/admin/dashboard" element={<Dashboard />} />
       <Route path="/admin/qr-manage" element={<QRManage />} />
