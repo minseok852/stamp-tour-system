@@ -419,14 +419,14 @@ const Settings = () => {
                                             type="range"
                                             className="form-range"
                                             min="50"
-                                            max="500"
+                                            max="2000"
                                             step="10"
                                             value={gpsSettings.gps_max_distance}
                                             onChange={(e) => handleGpsChange('gps_max_distance', parseInt(e.target.value))}
                                         />
                                         <div className="range-labels">
                                             <span>50m</span>
-                                            <span>500m</span>
+                                            <span>2000m</span>
                                         </div>
                                     </div>
 
