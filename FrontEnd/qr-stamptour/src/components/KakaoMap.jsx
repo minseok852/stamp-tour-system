@@ -110,7 +110,7 @@ const KakaoMap = ({
                 (err) => {
                     console.log('현재 위치를 가져올 수 없습니다:', err.message);
                 },
-                { enableHighAccuracy: true, maximumAge: 10000 }
+                { enableHighAccuracy: true, maximumAge: 0 }
             );
         }
 
