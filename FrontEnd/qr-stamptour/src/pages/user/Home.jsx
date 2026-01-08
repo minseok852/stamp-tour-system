@@ -23,7 +23,9 @@ import { getMyStamps } from '../../services/stampApi';
 import { getCompletionStatus } from '../../services/completionApi';
 
 // ⭐ KakaoMap 지연 로딩 (가장 무거운 컴포넌트)
-const KakaoMap = lazy(() => import('../../components/KakaoMap'));
+//const KakaoMap = lazy(() => import('../../components/KakaoMap'));
+// GoogleMap으로 변경
+const GoogleMap = lazy(() => import('../../components/GoogleMap'));
 
 // Vite용 동적 이미지 로드
 const stampImages = import.meta.glob('../../assets/images/stamps/stamp_*.png', { eager: true });
@@ -140,8 +142,49 @@ const Home = () => {
                 // 수집된 부스 ID 목록
                 const collectedBoothIds = myStampsData.map(stamp => stamp.booth_id);
                 
-                // 부스 데이터 가공 (수집 여부 포함)
-                const stampsData = boothsData.map(booth => ({
+                const stampsData = boothsData.map(booth => {
+                // ✅ 부스별 좌표 보정 (Google Maps 정확도 보정)
+                let lat = parseFloat(booth.latitude);
+                let lng = parseFloat(booth.longitude);
+                
+                // Google Maps 정확도 보정 (부스별로 미세조정)
+                const coordinateAdjustment = {
+                    1: { lat: 37.869844, lng:127.157538 },      // 국제교육팀
+                    2: { lat: 37.870253, lng:127.156728 },      // 교직과
+                    3: { lat: 37.871789, lng:127.156392 },      // 글쓰기센터
+                    4: { lat: 37.871736, lng:127.156301 },      // 인성교육팀
+                    5: { lat: 37.871996, lng:127.156604 },      // 교양교육팀
+                    6: { lat: 37.871156, lng: 127.155291 },      // 학생복지팀
+                    7: { lat: 37.8710, lng: 127.1551 },      // 장애학생지원센터
+                    8: { lat: 37.8729, lng: 127.1559 },      // 취업팀
+                    9: { lat: 37.8731, lng: 127.1557 },      // 학생생활상담센터
+                    10: { lat: 37.8733, lng: 127.1546 },     // 교수학습지원센터
+                    11: { lat: 37.8733, lng: 127.1546 },     // 학생성공팀
+                    12: { lat: 37.8733, lng: 127.1546 },     // 원격교육지원센터
+                    13: { lat: 37.8733, lng: 127.1548 },     // 학술정보팀
+                    14: { lat: 37.874424, lng: 127.155954 },     // 공학교육혁신센터
+                    15: { lat: 37.874543, lng: 127.156049 }      // IT융합지식재산교육센터
+                };
+                
+                // 부스에 보정이 있으면 적용
+                if (coordinateAdjustment[booth.booth_id]) {
+                    lat = coordinateAdjustment[booth.booth_id].lat;
+                    lng = coordinateAdjustment[booth.booth_id].lng;
+                }
+                
+                return {
+                    id: booth.booth_id,
+                    location: booth.booth_name,
+                    building: booth.location_name,
+                    icon: booth.icon || '📍',
+                    collected: collectedBoothIds.includes(booth.booth_id),
+                    lat: lat,
+                    lng: lng
+                };
+            });
+                // 부스 데이터 가공 (수집 여부 포함) ->카카오 MAP일 때 사용
+                //현재는 구글로 인하여 임시적 데이터를 집어넣어야함. 구글은 위도 경도가 정확하지 않음
+                {/*const stampsData = boothsData.map(booth => ({
                     id: booth.booth_id,
                     location: booth.booth_name,
                     building: booth.location_name,
@@ -150,7 +193,7 @@ const Home = () => {
                     lat: parseFloat(booth.latitude),
                     lng: parseFloat(booth.longitude)
                 }));
-                
+                */}
                 setStamps(stampsData);
                 
                 // ⭐ 혼잡도는 메인 로딩 완료 후 별도로 (비동기, 기다리지 않음)
@@ -675,13 +718,14 @@ const Home = () => {
                                 </div>
                             )}
 
-                            {/* ⭐ KakaoMap을 Suspense로 감싸서 지연 로딩 */}
+                            {/* ⭐ 구글 맵을 Suspense로 감싸서 지연 로딩 */}
                             <Suspense fallback={<MapLoadingFallback />}>
-                                <KakaoMap 
+                                <GoogleMap 
                                     markers={markers}
                                     onMarkerClick={handleMarkerClick}
                                     showCongestion={true}
                                     height="450px"
+                                    zoom={17}
                                 />
                             </Suspense>
                         </div>

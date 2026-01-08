@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import KakaoMap from '../../components/KakaoMap';
+//import KakaoMap from '../../components/KakaoMap';
 import { getAllBooths } from '../../services/boothApi';
 import { getDashboardStats, getCollectionStats, getSuspiciousRecords } from '../../services/adminApi';
 import { logout } from '../../services/authApi';
 import '../../styles/Dashboard.css';
+import GoogleMap from '../../components/GoogleMap';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -47,14 +48,45 @@ const Dashboard = () => {
         try {
             // 1. 부스 데이터 로드
             const boothsData = await getAllBooths();
-            const formattedBooths = boothsData.map(booth => ({
-                id: booth.booth_id,
-                name: booth.booth_name,
-                building: booth.location_name,
-                lat: parseFloat(booth.latitude),
-                lng: parseFloat(booth.longitude),
-                icon: booth.icon || '📍'
-            }));
+            
+            // ✅ Google Maps 좌표 보정 데이터
+            const coordinateAdjustment = {
+                1: { lat: 37.869844, lng:127.157538 },      // 국제교육팀
+                2: { lat: 37.870253, lng:127.156728 },      // 교직과
+                3: { lat: 37.871789, lng:127.156392 },      // 글쓰기센터
+                4: { lat: 37.871736, lng:127.156301 },      // 인성교육팀
+                5: { lat: 37.871996, lng:127.156604 },      // 교양교육팀
+                6: { lat: 37.871156, lng: 127.155291 },      // 학생복지팀
+                7: { lat: 37.8710, lng: 127.1551 },      // 장애학생지원센터
+                8: { lat: 37.8729, lng: 127.1559 },      // 취업팀
+                9: { lat: 37.8731, lng: 127.1557 },      // 학생생활상담센터
+                10:{ lat: 37.8733, lng: 127.1546 },     // 교수학습지원센터
+                11:{ lat: 37.8733, lng: 127.1546 },     // 학생성공팀
+                12: { lat: 37.8733, lng: 127.1546 },     // 원격교육지원센터
+                13: { lat: 37.8733, lng: 127.1548 },     // 학술정보팀
+                14: { lat: 37.874424, lng: 127.155954 },     // 공학교육혁신센터
+                15: { lat: 37.874543, lng: 127.156049 }      // IT융합지식재산교육센터
+            };
+            
+            const formattedBooths = boothsData.map(booth => {
+                let lat = parseFloat(booth.latitude);
+                let lng = parseFloat(booth.longitude);
+                
+                // ✅ 보정이 있으면 적용
+                if (coordinateAdjustment[booth.booth_id]) {
+                    lat = coordinateAdjustment[booth.booth_id].lat;
+                    lng = coordinateAdjustment[booth.booth_id].lng;
+                }
+                
+                return {
+                    id: booth.booth_id,
+                    name: booth.booth_name,
+                    building: booth.location_name,
+                    lat: lat,
+                    lng: lng,
+                    icon: booth.icon || '📍'
+                };
+            });
             setBooths(formattedBooths);
 
             // 2. 혼잡도 데이터 로드
@@ -149,6 +181,36 @@ const Dashboard = () => {
     // 홈으로
     const handleGoHome = () => {
         navigate('/');
+    };
+    // 상세 보기
+    const handleViewSuspicious = (record) => {
+        const message = `
+📋 의심 기록 상세
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+학번: ${record.student_id}
+이름: ${record.name}
+부스: ${record.booth}
+시간: ${new Date(record.time).toLocaleString('ko-KR')}
+사유: ${record.reason}
+상태: ${record.status}
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+        `;
+        alert(message);
+    };
+
+    // 무시하기
+    const handleDismissSuspicious = (record) => {
+        const confirmed = window.confirm(
+            `"${record.name}" 학생(${record.student_id})의 의심 기록을 무시하시겠습니까?\n\n사유: ${record.reason}`
+        );
+        
+        if (!confirmed) return;
+        
+        setSuspiciousRecords(prev => 
+            prev.filter(r => r.id !== record.id)
+        );
+        
+        alert(`${record.name} 학생의 의심 기록이 처리되었습니다.`);
     };
 
     // 수집 비율 차트 데이터
@@ -287,7 +349,7 @@ const Dashboard = () => {
                         </div>
                     </div>
                     <div className="map-container">
-                        <KakaoMap
+                        <GoogleMap
                             markers={booths.map(booth => ({
                                 id: booth.id,
                                 name: booth.name,
@@ -421,8 +483,10 @@ const Dashboard = () => {
                                                 <span className="reason-badge">{record.reason}</span>
                                             </td>
                                             <td className="action">
-                                                <button className="action-btn view">상세</button>
-                                                <button className="action-btn dismiss">무시</button>
+                                                <button className="action-btn view"
+                                                onClick={() => handleViewSuspicious(record)}>상세</button>
+                                                <button className="action-btn dismiss"
+                                                onClick={() => handleDismissSuspicious(record)}>무시</button>
                                             </td>
                                         </tr>
                                     ))}
