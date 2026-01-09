@@ -143,7 +143,7 @@
 .page-title {
     font-size: 2rem;
     font-weight: 800;
-    color: #2D3748;
+    color: #2D3748 !important;
     margin: 0;
 }
 
@@ -619,11 +619,14 @@
     transition: all 0.2s;
     text-align: center;
     position: relative;
+    color: #2D3748 !important;
 }
 
 .booth-select-item:hover:not(.disabled) {
     border-color: #0D4E8C;
     background: #EBF8FF;
+    box-shadow: 0 2px 8px rgba(13, 78, 140, 0.2);
+
 }
 
 .booth-select-item.selected {
@@ -642,8 +645,13 @@
 }
 
 .booth-select-item .booth-name {
+    color: #2D3748;
     font-size: 0.85rem;
     font-weight: 600;
+}
+
+.booth-select-item.selected .booth-name {
+    color: white;  /* ← 선택됐을 때만 흰색 */
 }
 
 .already-badge {

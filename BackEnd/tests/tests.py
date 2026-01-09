@@ -1,85 +1,30 @@
-def dms_to_decimal(degree, minute, second, direction):
-    """DMS(도분초) 형식을 소수점 형식으로 변환"""
-    decimal = degree + minute/60 + second/3600
+import re
+
+def dms_to_decimal(dms_str):
+    # 정규표현식으로 숫자와 방향 문자 추출
+    # 숫자(정수 또는 소수점 포함)를 찾고 마지막에 N, S, E, W 중 하나를 찾음
+    parts = re.findall(r"(\d+(?:\.\d+)?|[NSEW])", dms_str)
+    
+    degrees = float(parts[0])
+    minutes = float(parts[1])
+    seconds = float(parts[2])
+    direction = parts[3]
+    
+    # 공식 적용
+    decimal = degrees + (minutes / 60) + (seconds / 3600)
+    
+    # 남위(S)나 서경(W)일 경우 음수로 변환
     if direction in ['S', 'W']:
         decimal *= -1
-    return decimal
+        
+    return round(decimal, 6) # 소수점 6자리까지 반올림
 
-def parse_coordinate(coord_str):
-    """
-    '37°52.2600'N' 형식의 문자열을 파싱하여 degree, minute, second 추출
-    """
-    # 도(°) 기준으로 나누기
-    parts = coord_str.replace('°', ' ').replace("'", ' ').split()
-    
-    degree = int(parts[0])
-    minute_second = float(parts[1])
-    direction = parts[2]
-    
-    # 분.초 형식에서 분과 초 분리
-    minute = int(minute_second)
-    second = (minute_second - minute) * 60
-    
-    return degree, minute, second, direction
+# 테스트 데이터
+lat_input = '37°52\'26.00"N'
+lon_input = '127°9\'30.60"E'
 
-def main():
-    print("=" * 50)
-    print("GPS 좌표 변환기 (DMS → Decimal)")
-    print("=" * 50)
-    print("\n입력 형식: 37°52.2600'N (도°분.초'방향)")
-    print("방향: N(북), S(남), E(동), W(서)\n")
-    
-    while True:
-        # 위도 입력
-        latitude_input = input("위도를 입력하세요 (예: 37°52.2600'N): ").strip()
-        if not latitude_input:
-            print("입력이 비어있습니다. 다시 시도하세요.\n")
-            continue
-            
-        try:
-            lat_degree, lat_minute, lat_second, lat_direction = parse_coordinate(latitude_input)
-            latitude = dms_to_decimal(lat_degree, lat_minute, lat_second, lat_direction)
-            print(f"✓ 위도 변환 완료: {latitude:.4f}\n")
-            break
-        except (ValueError, IndexError):
-            print("❌ 입력 형식이 잘못되었습니다. 다시 시도하세요.\n")
-    
-    while True:
-        # 경도 입력
-        longitude_input = input("경도를 입력하세요 (예: 127°9.3060'E): ").strip()
-        if not longitude_input:
-            print("입력이 비어있습니다. 다시 시도하세요.\n")
-            continue
-            
-        try:
-            lon_degree, lon_minute, lon_second, lon_direction = parse_coordinate(longitude_input)
-            longitude = dms_to_decimal(lon_degree, lon_minute, lon_second, lon_direction)
-            print(f"✓ 경도 변환 완료: {longitude:.4f}\n")
-            break
-        except (ValueError, IndexError):
-            print("❌ 입력 형식이 잘못되었습니다. 다시 시도하세요.\n")
-    
-    # 결과 출력
-    print("=" * 50)
-    print("📍 변환 결과")
-    print("=" * 50)
-    print(f"위도: {latitude:.4f}")
-    print(f"경도: {longitude:.4f}")
-    print(f"\n한 줄 형식: {latitude:.4f}, {longitude:.4f}")
-    print("=" * 50)
-    
-    # 추가 변환 여부
-    while True:
-        again = input("\n다시 변환하시겠습니까? (y/n): ").strip().lower()
-        if again == 'y':
-            print("\n")
-            main()
-            break
-        elif again == 'n':
-            print("프로그램을 종료합니다.")
-            break
-        else:
-            print("y 또는 n을 입력하세요.")
+lat_decimal = dms_to_decimal(lat_input)
+lon_decimal = dms_to_decimal(lon_input)
 
-if __name__ == "__main__":
-    main()
+print(f"입력 위도: {lat_input} -> 변환: {lat_decimal}")
+print(f"입력 경도: {lon_input} -> 변환: {lon_decimal}")
