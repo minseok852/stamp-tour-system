@@ -483,7 +483,7 @@ const UserManage = () => {
                                                 onClick={() => !alreadyCollected && setSelectedBooth(booth.booth_id)}
                                             >
                                                 <span className="booth-icon">{booth.icon || '📍'}</span>
-                                                <span className="booth-name">{booth.booth_name}</span>
+                                                <span className="booth-name" >{booth.booth_name}</span>
                                                 {alreadyCollected && <span className="already-badge">수집완료</span>}
                                             </div>
                                         );
